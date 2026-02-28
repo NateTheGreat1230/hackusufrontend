@@ -88,7 +88,7 @@ export function InvoiceManager({ companyId, projectId, projectData, logEvent }: 
     });
 
     if (logEvent) {
-      await logEvent(`User generated Invoice for $${totalAmount.toFixed(2)}.`, "invoice_created");
+      await logEvent(`Generated Invoice for $${totalAmount.toFixed(2)}.`, "invoice_created");
     }
 
     router.push(`/${companyId}/invoice/${invoiceRef.id}`);

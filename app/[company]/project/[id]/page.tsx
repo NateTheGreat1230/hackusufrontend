@@ -128,7 +128,7 @@ export default function ProjectPage({
   const handleUpdateStatus = async (newStatus: string) => {
     if (newStatus === baseStatus) return;
     await updateDoc(projectRef, { status: newStatus });
-    await logEvent(`User changed project status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update", true);
+    await logEvent(`Changed project status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update", true);
   };
 
   const handleCopyLink = async () => {
@@ -156,7 +156,7 @@ export default function ProjectPage({
   // Customer Handlers
   const handleSelectNewCustomer = async (customerId: string, customerName?: string) => {
     await updateDoc(projectRef, { customer: doc(db, "customers", customerId) });
-    await logEvent(`User changed linked customer to ${customerName || 'a new customer'}`, "customer_update");
+    await logEvent(`Changed linked customer to ${customerName || 'a new customer'}`, "customer_update");
     setIsCustomerDialogOpen(false);
     setCustomerSearch("");
   };
@@ -248,10 +248,9 @@ export default function ProjectPage({
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">
+              <h1 className="text-3xl font-bold tracking-tight mb-3">
                 {projectData.number ? projectData.number : projectData.id}
               </h1>
-              <p className="text-muted-foreground mt-1 mb-3">Project & Quote details</p>
               <AssigneeSelector 
                 company={company} 
                 docRef={projectRef} 
@@ -353,8 +352,16 @@ export default function ProjectPage({
                       variant={projectData.approved ? "default" : "outline"} 
                       className={projectData.approved ? "bg-green-600 hover:bg-green-700 cursor-pointer flex-1" : "cursor-pointer flex-1"} 
                       onClick={async () => {
-                        await updateDoc(doc(db, "projects", id), { approved: true, rejected: false });
-                        await logEvent("Technician manually marked proposal as Approved.", "approval", true);
+                        await updateDoc(doc(db, "projects", id), { approved: true, rejected: false, status: "open" });
+                        
+                        if (projectData.ticket) {
+                          const ticketRef = typeof projectData.ticket === 'string' 
+                            ? doc(db, projectData.ticket) 
+                            : doc(db, "tickets", projectData.ticket.id);
+                          await updateDoc(ticketRef, { status: "complete" });
+                        }
+
+                        await logEvent("Manually marked proposal as Approved.", "approval", true);
                       }}>
                       Approved
                     </Button>
@@ -364,7 +371,7 @@ export default function ProjectPage({
                       className={(!projectData.approved && !projectData.rejected) ? "bg-yellow-600 hover:bg-yellow-700 text-white cursor-pointer flex-1" : "cursor-pointer flex-1"}
                       onClick={async () => {
                         await updateDoc(doc(db, "projects", id), { approved: false, rejected: false });
-                        await logEvent("Technician reset proposal to Pending status.", "status_update", true);
+                        await logEvent("Reset proposal to Pending status.", "status_update", true);
                       }}>
                       Pending
                     </Button>
@@ -374,7 +381,7 @@ export default function ProjectPage({
                       className={projectData.rejected ? "bg-red-600 hover:bg-red-700 cursor-pointer flex-1" : "cursor-pointer flex-1"}
                       onClick={async () => {
                         await updateDoc(doc(db, "projects", id), { approved: false, rejected: true });
-                        await logEvent("Technician manually marked proposal as Rejected.", "rejection", true);
+                        await logEvent("Manually marked proposal as Rejected.", "rejection", true);
                       }}>
                       Rejected
                     </Button>
