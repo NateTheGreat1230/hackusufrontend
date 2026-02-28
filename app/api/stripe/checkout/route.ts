@@ -1,53 +1,48 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
-// Initialize Stripe with your secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_123", {
-  apiVersion: "2026-02-25.clover", // Updated to match your installed package
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2026-02-25.clover" as any,
 });
 
 export async function POST(req: Request) {
   try {
-    // Read the data sent from our frontend invoice page
-    const { amount, invoiceId, companyId, invoiceNumber, currentUrl } = await req.json();
+    const { amount, invoiceId, projectId, companyId, invoiceNumber, projectNumber, currentUrl, token } = await req.json();
 
-    // Stripe requires amounts to be in cents (e.g., $10.00 = 1000 cents)
-    const amountInCents = Math.round(parseFloat(amount) * 100);
+    // 1. Build the success URL and ensure the TOKEN is preserved
+    const url = new URL(currentUrl);
+    url.searchParams.set("token", token); // Re-attach the token for the return trip
+    const successUrl = `${url.toString()}&session_id={CHECKOUT_SESSION_ID}`;
 
-    // Create a Stripe Checkout Session
+    // 2. Create the Stripe Session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
+      payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: "usd",
             product_data: {
-              name: `Invoice #${invoiceNumber || invoiceId}`,
-              description: `Payment for invoice ${invoiceId}`,
+              name: projectId ? `Deposit for Order #${projectNumber}` : `Invoice #${invoiceNumber}`,
             },
-            unit_amount: amountInCents,
+            unit_amount: Math.round(amount * 100), // Stripe expects cents
           },
           quantity: 1,
         },
       ],
-      // We pass this metadata so Stripe remembers what invoice this was for!
+      mode: "payment",
+      success_url: successUrl,
+      cancel_url: currentUrl,
       metadata: {
-        invoiceId: invoiceId,
+        invoiceId: invoiceId || "",
+        projectId: projectId || "", // Pass the Project ID to metadata for the verify script
+        amountPaid: amount.toString(),
         companyId: companyId,
-        amountPaid: amount.toString()
       },
-      // Where to send them after they pay (or if they click back)
-// Notice the ?session_id={CHECKOUT_SESSION_ID} at the end!
-      success_url: `${currentUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${currentUrl}?payment=cancelled`,
     });
 
-    // Send the secure Stripe URL back to the frontend
     return NextResponse.json({ url: session.url });
-
-  } catch (err: any) {
-    console.error("Stripe error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error: any) {
+    console.error("Stripe Checkout Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
