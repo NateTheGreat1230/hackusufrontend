@@ -13,6 +13,9 @@ import {
 import { Bell, User } from "lucide-react"
 import { usePathname } from "next/navigation"
 
+// 1. IMPORT YOUR NEW COMPONENT HERE (Adjust the path if needed)
+import { GlobalSearch } from "./globalSearch" 
+
 export function MainHeader({ company }: { company: string }) {
   const pathname = usePathname()
 
@@ -30,17 +33,23 @@ export function MainHeader({ company }: { company: string }) {
   }
 
   return (
-    <header className="h-14 border-b flex items-center px-4 justify-between">
-      {/* LEFT SIDE */}
-      <div className="flex items-center gap-4">
+    <header className="h-14 border-b flex items-center px-4 justify-between gap-4">
+      
+      {/* LEFT SIDE - Added flex-1 so it takes up equal space */}
+      <div className="flex items-center gap-4 flex-1">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold">
+        <h1 className="text-lg font-semibold whitespace-nowrap">
           {getTitle()}
         </h1>
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="flex items-center gap-3">
+      {/* CENTER - THE SEARCH BAR */}
+      <div className="flex-1 max-w-xl hidden md:block">
+        <GlobalSearch />
+      </div>
+
+      {/* RIGHT SIDE - Added flex-1 and justify-end to balance the left side */}
+      <div className="flex items-center gap-3 flex-1 justify-end">
         <Button variant="ghost" size="icon">
           <Bell className="h-5 w-5" />
         </Button>
@@ -60,6 +69,7 @@ export function MainHeader({ company }: { company: string }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
     </header>
   )
 }

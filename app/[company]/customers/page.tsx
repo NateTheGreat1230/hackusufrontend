@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { Users, Loader2 } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
+// 1. ADD useSearchParams HERE
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Customer } from "@/types";
 
@@ -13,6 +14,10 @@ export default function CustomersPage() {
   const params = useParams();
   const company = params.company as string;
   
+  // 2. INITIALIZE the search params hook
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q")?.toLowerCase() || "";
+
   const [data, setData] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +38,15 @@ export default function CustomersPage() {
 
     return () => unsubscribe();
   }, [company]);
+
+  // 3. FILTER USING searchQuery
+  const filteredData = data.filter((item) => {
+    if (!searchQuery) return true;
+
+    const searchString = `${item.first_name || ''} ${item.last_name || ''} ${item.name || ''} ${item.email || ''} ${item.phone || ''} ${item.company_name || ''}`.toLowerCase();
+    
+    return searchString.includes(searchQuery);
+  });
 
   const columns = [
     {
@@ -76,23 +90,21 @@ export default function CustomersPage() {
     <div className="flex h-full w-full overflow-hidden bg-muted/10 min-h-screen">
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2 tracking-tight">
-                <Users className="text-blue-600" />
-                Customers
-              </h1>
-              <p className="text-muted-foreground mt-1 text-sm">Manage your customers.</p>
-            </div>
+          
+          {/* 4. Action Bar with Description */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">
+              Manage your customers.
+            </p>
+            {/* If you ever add an "Add Customer" button, it goes right here! */}
           </div>
 
           <DataTable 
             columns={columns}
-            data={data}
-            searchPlaceholder="Search customers..."
-            searchKey={(item: Customer) => `${item.first_name || ''} ${item.last_name || ''} ${item.name || ''} ${item.email || ''} ${item.phone || ''} ${item.company_name || ''}`}
+            // 5. PASS FILTERED DATA AND CLEAN UP PROPS
+            data={filteredData}
             onRowClick={(item: Customer) => router.push(`/${company}/customer/${item.id}`)}
-            emptyMessage="No customers found."
+            emptyMessage={searchQuery ? `No customers found matching "${searchQuery}".` : "No customers found."}
           />
         </div>
       </div>

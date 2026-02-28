@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { Ticket as TicketIcon, Loader2 } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+// 1. ADD useSearchParams HERE
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Ticket } from "@/types";
 
@@ -13,6 +14,10 @@ export default function TicketsPage() {
   const params = useParams();
   const company = params.company as string;
   
+  // 2. INITIALIZE the search params hook
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q")?.toLowerCase() || "";
+
   const [data, setData] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +38,15 @@ export default function TicketsPage() {
 
     return () => unsubscribe();
   }, [company]);
+
+  // 3. FILTER USING searchQuery
+  const filteredData = data.filter((item) => {
+    if (!searchQuery) return true;
+
+    const searchString = `${item.number || ''} ${item.request || ''} ${item.status || ''}`.toLowerCase();
+    
+    return searchString.includes(searchQuery);
+  });
 
   const columns = [
     {
@@ -82,23 +96,21 @@ export default function TicketsPage() {
     <div className="flex h-full w-full overflow-hidden bg-muted/10 min-h-screen">
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2 tracking-tight">
-                <TicketIcon className="text-blue-600" />
-                Tickets
-              </h1>
-              <p className="text-muted-foreground mt-1 text-sm">Manage customer requests and tickets.</p>
-            </div>
+          
+          {/* 4. Action Bar with Description */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">
+              Manage customer requests and tickets.
+            </p>
+            {/* Add a "Create Ticket" button here later if needed! */}
           </div>
 
           <DataTable 
             columns={columns}
-            data={data}
-            searchPlaceholder="Search tickets..."
-            searchKey={(item: Ticket) => `${item.number || ''} ${item.request || ''} ${item.status || ''}`}
+            // 5. PASS FILTERED DATA AND CLEAN UP PROPS
+            data={filteredData}
             onRowClick={(item: Ticket) => router.push(`/${company}/ticket/${item.id}`)}
-            emptyMessage="No tickets found."
+            emptyMessage={searchQuery ? `No tickets found matching "${searchQuery}".` : "No tickets found."}
           />
         </div>
       </div>

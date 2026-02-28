@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { Briefcase, Loader2 } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
+// 1. ADD useSearchParams HERE
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Project } from "@/types";
 
@@ -13,6 +14,10 @@ export default function ProjectsPage() {
   const params = useParams();
   const company = params.company as string;
   
+  // 2. INITIALIZE the search params hook
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q")?.toLowerCase() || "";
+
   const [data, setData] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +38,15 @@ export default function ProjectsPage() {
 
     return () => unsubscribe();
   }, [company]);
+
+  // 3. FILTER USING searchQuery
+  const filteredData = data.filter((item) => {
+    if (!searchQuery) return true;
+
+    const searchString = `${item.number || ''} ${item.name || ''} ${item.status || ''}`.toLowerCase();
+    
+    return searchString.includes(searchQuery);
+  });
 
   const columns = [
     {
@@ -85,14 +99,13 @@ export default function ProjectsPage() {
     <div className="flex h-full w-full overflow-hidden bg-muted/10 min-h-screen">
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2 tracking-tight">
-                <Briefcase className="text-blue-600" />
-                Projects
-              </h1>
-              <p className="text-muted-foreground mt-1 text-sm">Manage projects and quotes.</p>
-            </div>
+          
+          {/* 4. Action Bar with Description */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">
+              Manage projects and quotes.
+            </p>
+            {/* If you ever add a "Create Project" button, put it right here! */}
           </div>
 
           <DataTable 
@@ -101,7 +114,7 @@ export default function ProjectsPage() {
             searchPlaceholder="Search projects..."
             searchKey={(item: Project) => `${item.number || ''} ${item.status || ''}`}
             onRowClick={(item: Project) => router.push(`/${company}/project/${item.id}`)}
-            emptyMessage="No projects found."
+            emptyMessage={searchQuery ? `No projects found matching "${searchQuery}".` : "No projects found."}
           />
         </div>
       </div>
