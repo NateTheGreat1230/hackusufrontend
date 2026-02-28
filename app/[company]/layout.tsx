@@ -15,7 +15,7 @@ export default async function InternalLayout({ children, params }: {children: Re
             <div className="flex flex-col flex-1">
               <MainHeader company={company} />
 
-              <main className="flex-1 p-6 overflow-auto">
+              <main className="flex-1 overflow-auto">
                 {children}
               </main>
             </div>
