@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, updateDoc, addDoc, serverTimestamp, getCountFromServer, deleteDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, CircleDashed, X, MoreHorizontal, Copy, Trash, FileText } from "lucide-react";
+import { CheckCircle2, CircleDashed, X, MoreHorizontal, Copy, Trash, FileText, Link as LinkIcon, ExternalLink, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,8 @@ export default function ProjectPage({
   // States for New Customer
   const [isNewCustomerDialogOpen, setIsNewCustomerDialogOpen] = useState(false);
   const [newCustomerForm, setNewCustomerForm] = useState({ first_name: "", last_name: "", email: "", phone: "" });
+
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Listen to Project
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function ProjectPage({
 
   const projectRef = doc(db, "projects", id);
 
-  const logEvent = async (note: string, type: string = "system_event") => {
+  const logEvent = async (note: string, type: string = "system_event", is_public: boolean = false) => {
     if (!projectData?.timeline) return;
     const timelineRef = typeof projectData.timeline === 'string' ? doc(db, projectData.timeline) : projectData.timeline;
     
@@ -100,6 +102,7 @@ export default function ProjectPage({
       generated_by: projectRef,
       note,
       type,
+      is_public,
       timeline: timelineRef,
       time_created: serverTimestamp(),
       time_updated: serverTimestamp(),
@@ -117,7 +120,29 @@ export default function ProjectPage({
   const handleUpdateStatus = async (newStatus: string) => {
     if (newStatus === baseStatus) return;
     await updateDoc(projectRef, { status: newStatus });
-    await logEvent(`User changed project status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update");
+    await logEvent(`User changed project status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update", true);
+  };
+
+  const handleCopyLink = async () => {
+    let token = projectData.token;
+    if (!token) {
+      token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      await updateDoc(projectRef, { token });
+    }
+    const link = `${window.location.origin}/order/${id}?token=${token}`;
+    navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleOpenPortal = async () => {
+    let token = projectData.token;
+    if (!token) {
+      token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      await updateDoc(projectRef, { token });
+    }
+    const link = `${window.location.origin}/order/${id}?token=${token}`;
+    window.open(link, '_blank');
   };
 
   // Customer Handlers
@@ -291,13 +316,71 @@ export default function ProjectPage({
 
             {/* Basic Info Card */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b mb-4">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <FileText className="w-5 h-5" /> Project Information
                 </CardTitle>
+                {projectData.approved ? (
+                  <div className="flex items-center gap-1 text-green-700 bg-green-50 px-2 py-1 rounded-md border border-green-200">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span className="text-xs font-semibold">Approved</span>
+                  </div>
+                ) : projectData.rejected ? (
+                  <div className="flex items-center gap-1 text-red-700 bg-red-50 px-2 py-1 rounded-md border border-red-200">
+                    <X className="w-3 h-3" />
+                    <span className="text-xs font-semibold">Rejected</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-yellow-700 bg-yellow-50 px-2 py-1 rounded-md border border-yellow-200">
+                    <CircleDashed className="w-3 h-3" />
+                    <span className="text-xs font-semibold">Pending</span>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="mt-2">
                 <div className="space-y-4">
+                  <div className="flex items-center gap-2 flex-wrap pb-4 border-b">
+                    <Button 
+                      size="sm"
+                      variant={projectData.approved ? "default" : "outline"} 
+                      className={projectData.approved ? "bg-green-600 hover:bg-green-700 cursor-pointer flex-1" : "cursor-pointer flex-1"} 
+                      onClick={async () => {
+                        await updateDoc(doc(db, "projects", id), { approved: true, rejected: false });
+                        await logEvent("Technician manually marked proposal as Approved.", "approval", true);
+                      }}>
+                      Approve
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant={(!projectData.approved && !projectData.rejected) ? "default" : "outline"} 
+                      className={(!projectData.approved && !projectData.rejected) ? "bg-yellow-600 hover:bg-yellow-700 text-white cursor-pointer flex-1" : "cursor-pointer flex-1"}
+                      onClick={async () => {
+                        await updateDoc(doc(db, "projects", id), { approved: false, rejected: false });
+                        await logEvent("Technician reset proposal to Pending status.", "status_update", true);
+                      }}>
+                      Pending
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant={projectData.rejected ? "default" : "outline"}
+                      className={projectData.rejected ? "bg-red-600 hover:bg-red-700 cursor-pointer flex-1" : "cursor-pointer flex-1"}
+                      onClick={async () => {
+                        await updateDoc(doc(db, "projects", id), { approved: false, rejected: true });
+                        await logEvent("Technician manually marked proposal as Rejected.", "rejection", true);
+                      }}>
+                      Reject
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 w-full">
+                    <Button variant="outline" className="flex-1 cursor-pointer" onClick={handleOpenPortal}>
+                      <ExternalLink className="w-4 h-4 mr-2" /> View Portal
+                    </Button>
+                    <Button variant="outline" className="flex-1 cursor-pointer" onClick={handleCopyLink}>
+                      {copiedLink ? <Check className="w-4 h-4 mr-2 text-green-500" /> : <Copy className="w-4 h-4 mr-2" />} 
+                      {copiedLink ? "Copied!" : "Copy Link"}
+                    </Button>
+                  </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Original Ticket</div>
                     <div className="text-sm font-medium">

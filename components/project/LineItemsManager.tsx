@@ -11,7 +11,7 @@ interface LineItemsManagerProps {
   companyId: string;
   projectId: string;
   projectData: any;
-  logEvent?: (note: string, type?: string) => Promise<void>;
+  logEvent?: (note: string, type?: string, isPublic?: boolean) => Promise<void>;
 }
 
 export function LineItemsManager({ companyId, projectId, projectData, logEvent }: LineItemsManagerProps) {
@@ -75,8 +75,12 @@ export function LineItemsManager({ companyId, projectId, projectData, logEvent }
      await updateDoc(projectRef, {
         amount: total,
         cost: total,
-        amount_due: total // Just syncing it, real business logic might be different if multiple payments happen
+        amount_due: total, // Just syncing it, real business logic might be different if multiple payments happen
+        approved: false,
+        rejected: false
      });
+     
+     return total;
   }
 
   const handleAddProductDirectly = async (product: Product) => {
@@ -101,11 +105,11 @@ export function LineItemsManager({ companyId, projectId, projectData, logEvent }
 
     // Create optimistic items array to get strict calc
     const optimisticItems = [...lineItems, { ...newItem, id: docRef.id, productData: product }];
-    await updateProjectTotal(optimisticItems);
+    const newTotal = await updateProjectTotal(optimisticItems);
 
-      if (logEvent) {
-        await logEvent(`User added ${product.name || 'a product'} to the project.`, "line_items_add");
-      }
+    if (logEvent) {
+      await logEvent(`Added ${product.name || 'a product'} to the project. The new total is $${newTotal.toFixed(2)}.`, "line_items_add", true);
+    }
 
       setProductSearch("");
     };
@@ -126,14 +130,14 @@ export function LineItemsManager({ companyId, projectId, projectData, logEvent }
       await updateDoc(itemRef, { [field]: value, time_updated: serverTimestamp() });
       
       const updatedItems = lineItems.map(i => i.id === item.id ? { ...i, [field]: value } : i);
-      await updateProjectTotal(updatedItems);
+      const newTotal = await updateProjectTotal(updatedItems);
       
       const fieldName = field === "qty" ? "quantity" : "price";
       const formattedOld = field === "price" ? `$${originalValue.toFixed(2)}` : originalValue;
       const formattedNew = field === "price" ? `$${value.toFixed(2)}` : value;
 
       if (logEvent) {
-         await logEvent(`User changed ${item.productData?.name || 'an item'}'s ${fieldName} from ${formattedOld} to ${formattedNew}.`, "line_items_update");
+         await logEvent(`Changed ${item.productData?.name || 'an item'}'s ${fieldName} from ${formattedOld} to ${formattedNew}. The new total is $${newTotal.toFixed(2)}.`, "line_items_update", true);
       }
   }
   
@@ -141,11 +145,23 @@ export function LineItemsManager({ companyId, projectId, projectData, logEvent }
      if (!confirm("Are you sure you want to remove this item?")) return;
      await deleteDoc(doc(db, "product_instances", item.id));
      const remainder = lineItems.filter(i => i.id !== item.id);
-     await updateProjectTotal(remainder);
+     const newTotal = await updateProjectTotal(remainder);
        
        if (logEvent) {
-          await logEvent(`User removed ${item.productData?.name || 'an item'} from the project.`, "line_items_remove");
+          await logEvent(`Removed ${item.productData?.name || 'an item'} from the project. The new total is $${newTotal.toFixed(2)}.`, "line_items_remove", true);
        }
+    };
+
+    const handleUpdateDeposit = async (newDeposit: number) => {
+      const projectRef = doc(db, "projects", projectId);
+      await updateDoc(projectRef, {
+        deposit_required: newDeposit,
+        approved: false,
+        rejected: false
+      });
+      if (logEvent) {
+        await logEvent(`Set a required deposit of $${newDeposit.toFixed(2)}.`, "line_items_update", true);
+      }
     };
 
     const filteredProducts = availableProducts.filter(p => 
@@ -154,6 +170,7 @@ export function LineItemsManager({ companyId, projectId, projectData, logEvent }
       );
 
       const totalAmount = projectData?.amount || projectData?.cost || 0;
+      const depositRequired = projectData?.deposit_required || 0;
       const totalAmountDue = projectData?.amount_due || projectData?.amount || 0;
 
         return (
@@ -289,7 +306,31 @@ export function LineItemsManager({ companyId, projectId, projectData, logEvent }
              <span className="text-muted-foreground text-base">Total Amount</span>
              <span className="text-lg">${(totalAmount).toFixed(2)}</span>
            </div>
-           <div className="flex justify-between items-center text-sm font-bold">
+           <div className="flex justify-between items-center text-sm font-medium">
+             <span className="text-muted-foreground text-base">Deposit Required</span>
+             <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">$</span>
+                <input 
+                  className="w-24 text-right text-sm h-8 rounded-md border border-input bg-transparent px-2 py-1 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={depositRequired}
+                  onBlur={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    if (val !== depositRequired) handleUpdateDeposit(val);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = parseFloat(e.currentTarget.value) || 0;
+                      if (val !== depositRequired) handleUpdateDeposit(val);
+                      e.currentTarget.blur();
+                    }
+                  }}
+                />
+             </div>
+           </div>
+           <div className="flex justify-between items-center text-sm font-bold pt-2 border-t">
              <span className="text-muted-foreground text-base">Amount Due</span>
              <span className="text-xl text-red-600">${(totalAmountDue).toFixed(2)}</span>
            </div>

@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 
-import { Bell, User } from "lucide-react"
+import { Bell, User, ChevronDown } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 // 1. IMPORT YOUR NEW COMPONENT HERE (Adjust the path if needed)
@@ -56,16 +56,19 @@ export function MainHeader({ company }: { company: string }) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
+            <Button variant="outline" className="rounded-full h-9 px-2 gap-1 flex items-center cursor-pointer">
+              <div className="rounded-full bg-primary/10 p-1 flex items-center justify-center">
+                <User className="h-4 w-4" />
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground mr-1" />
             </Button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Billing</DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer">Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem className="text-red-500 cursor-pointer">Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
