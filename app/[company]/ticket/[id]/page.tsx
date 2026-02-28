@@ -249,7 +249,7 @@ export default function TicketPage({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
-                Ticket {ticketData.number ? `TK${ticketData.number}` : id}
+                {ticketData.number ? ticketData.number : id}
               </h1>
               <p className="text-muted-foreground mt-1 mb-3">Lead & Request details</p>
               <AssigneeSelector 

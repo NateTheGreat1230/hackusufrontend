@@ -45,7 +45,7 @@ export default function ProjectsPage() {
   const filteredData = data.filter((item) => {
     if (!searchQuery) return true;
 
-    const searchString = `${item.number || ''} ${item.name || ''} ${item.status || ''}`.toLowerCase();
+    const searchString = `${item.number || ''} ${item.status || ''}`.toLowerCase();
     
     return searchString.includes(searchQuery);
   });
@@ -103,9 +103,7 @@ export default function ProjectsPage() {
 
           <DataTable 
             columns={columns}
-            data={data}
-            searchPlaceholder="Search projects..."
-            searchKey={(item: Project) => `${item.number || ''} ${item.status || ''}`}
+            data={filteredData}
             onRowClick={(item: Project) => router.push(`/${company}/project/${item.id}`)}
             emptyMessage={searchQuery ? `No projects found matching "${searchQuery}".` : "No projects found."}
           />

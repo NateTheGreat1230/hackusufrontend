@@ -216,7 +216,7 @@ export default function ProjectPage({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
-                Project {projectData.number ? `PROJ${projectData.number}` : projectData.id}
+                {projectData.number ? projectData.number : projectData.id}
               </h1>
               <p className="text-muted-foreground mt-1 mb-3">Project & Quote details</p>
               <AssigneeSelector 
@@ -298,12 +298,6 @@ export default function ProjectPage({
               </CardHeader>
               <CardContent className="mt-2">
                 <div className="space-y-4">
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Status</div>
-                    <Badge variant={['open', 'completed'].includes(baseStatus) ? "default" : "secondary"} className="capitalize">
-                      {baseStatus}
-                    </Badge>
-                  </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Original Ticket</div>
                     <div className="text-sm font-medium">

@@ -59,7 +59,7 @@ export function ProjectManager({ companyId, ticketId, ticketData, logEvent }: Pr
     });
 
     if (logEvent) {
-      await logEvent(`User created Project PROJ${newProjectNumber}.`, "project_created");
+      await logEvent(`User created Project ${newProjectNumber}.`, "project_created");
     }
 
     router.push(`/${companyId}/project/${newProjectRef.id}`);
@@ -90,7 +90,7 @@ export function ProjectManager({ companyId, ticketId, ticketData, logEvent }: Pr
               >
                 <div className="flex flex-col">
                   <span className="font-medium text-blue-600 hover:underline">
-                    {proj.number && typeof proj.number === "number" ? `PROJ${proj.number}` : (proj.number ? proj.number : `Project #${proj.id.slice(0,6)}`)}
+                    {proj.number ? proj.number : `Project #${proj.id.slice(0,6)}`}
                   </span>
                   <span className="text-xs text-muted-foreground">
                      {new Date(proj.time_created?.toMillis?.() || Date.now()).toLocaleDateString()}

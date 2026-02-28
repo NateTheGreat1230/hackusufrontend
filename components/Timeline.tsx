@@ -67,9 +67,9 @@ function TimelineItem({ entry }: TimelineItemProps) {
           const docPath = docRef.path || "";
           
           if (docPath.includes("tickets/")) {
-            setGeneratorLabel(`Ticket TK${data.number || '??'}`);
+            setGeneratorLabel(`${data.number || '??'}`);
           } else if (docPath.includes("projects/")) {
-            setGeneratorLabel(`Project PROJ${data.number || '??'}`);
+            setGeneratorLabel(`${data.number || '??'}`);
           } else if (docPath.includes("users/")) {
             const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ");
             setGeneratorLabel(`User ${fullName || data.email || '??'}`);
@@ -133,7 +133,7 @@ function TimelineItem({ entry }: TimelineItemProps) {
             </div>
             {userLabel && (
               <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
-                <User className="w-3 h-3" /> Note by {userLabel}
+                <User className="w-3 h-3" /> {userLabel}
               </div>
             )}
           </div>
@@ -142,7 +142,7 @@ function TimelineItem({ entry }: TimelineItemProps) {
             {entry.note || <span className="capitalize">{entry.type.replace('_', ' ')} Event</span>}
             {userLabel && (
               <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
-                <User className="w-3 h-3" /> Action by {userLabel}
+                <User className="w-3 h-3" /> {userLabel}
               </div>
             )}
           </div>
