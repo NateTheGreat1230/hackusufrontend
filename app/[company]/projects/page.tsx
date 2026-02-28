@@ -45,17 +45,11 @@ export default function ProjectsPage() {
       )
     },
     {
-      header: "Name",
-      key: "name",
-      className: "font-medium",
-      render: (item: Project) => item.name || "Unnamed Project"
-    },
-    {
       header: "Status",
       key: "status",
       render: (item: Project) => (
         <span className="capitalize px-2 py-1 bg-muted rounded-md text-xs font-medium border">
-          {item.status || "quote"}
+          {item.status || "draft"}
         </span>
       )
     },
@@ -105,7 +99,7 @@ export default function ProjectsPage() {
             columns={columns}
             data={data}
             searchPlaceholder="Search projects..."
-            searchKey={(item: Project) => `${item.number || ''} ${item.name || ''} ${item.status || ''}`}
+            searchKey={(item: Project) => `${item.number || ''} ${item.status || ''}`}
             onRowClick={(item: Project) => router.push(`/${company}/project/${item.id}`)}
             emptyMessage="No projects found."
           />

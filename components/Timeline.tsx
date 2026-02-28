@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { 
   collection, 
   query, 
@@ -108,22 +108,16 @@ function TimelineItem({ entry }: TimelineItemProps) {
         </div>
         
         {/* Event Body */}
-        {entry.type === "project_creation" ? (
-          <div className="text-sm text-muted-foreground">
-            {entry.note || "A new project was generated."}
+        {entry.type === "note" && entry.note ? (
+          <div className="bg-muted/30 p-3.5 rounded-lg border text-sm">
+            <div className="flex gap-2.5 items-start text-foreground">
+              <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              <span className="leading-relaxed whitespace-pre-wrap">{entry.note}</span>
+            </div>
           </div>
         ) : (
-          <div className="bg-muted/30 p-3.5 rounded-lg border text-sm">
-            {entry.type === "note" && entry.note ? (
-              <div className="flex gap-2.5 items-start text-foreground">
-                <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                <span className="leading-relaxed whitespace-pre-wrap">{entry.note}</span>
-              </div>
-            ) : (
-              <span className="capitalize text-muted-foreground">
-                {entry.type} Event
-              </span>
-            )}
+          <div className="text-sm text-muted-foreground">
+            {entry.note || <span className="capitalize">{entry.type.replace('_', ' ')} Event</span>}
           </div>
         )}
       </div>
@@ -135,6 +129,7 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Subscribe to the timeline's entries
   useEffect(() => {
@@ -172,6 +167,13 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
     };
   }, [timelineId]);
 
+  // Auto-scroll to bottom when entries change or load
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [entries]);
+
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNote.trim() || !timelineId) return;
@@ -207,7 +209,7 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
         <h3 className="font-semibold text-lg">Timeline</h3>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6" ref={scrollRef}>
         {entries.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-8">No events yet.</p>
         ) : (

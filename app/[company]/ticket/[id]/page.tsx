@@ -103,13 +103,29 @@ export default function TicketPage({
 
   const ticketRef = doc(db, "tickets", id);
 
+  const logEvent = async (note: string, type: string = "system_event") => {
+    if (!ticketData?.timeline) return;
+    const timelineRef = typeof ticketData.timeline === 'string' ? doc(db, ticketData.timeline) : ticketData.timeline;
+    await addDoc(collection(db, "timeline_entries"), {
+      company: doc(db, "companies", company),
+      generated_by: ticketRef,
+      note,
+      type,
+      timeline: timelineRef,
+      time_created: serverTimestamp(),
+      time_updated: serverTimestamp(),
+    });
+  };
+
   // Status Handlers
-  const hasConfirmedProject = projects.some(p => p.status === 'confirmed');
+  const hasConfirmedProject = projects.some(p => p.status === 'open' || p.status === 'completed');
   const baseStatus = ticketData.status?.toLowerCase() || 'open';
   const displayStatus = hasConfirmedProject ? 'Won' : (baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1));
 
   const handleUpdateStatus = async (newStatus: string) => {
+    if (newStatus === baseStatus) return;
     await updateDoc(ticketRef, { status: newStatus });
+    await logEvent(`User changed ticket status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update");
   };
 
   // Request Handlers
@@ -120,13 +136,19 @@ export default function TicketPage({
   };
   
   const handleSaveRequest = async () => {
+    if (editedRequest === currentRequestText) {
+      setIsEditingRequest(false);
+      return;
+    }
     await updateDoc(ticketRef, { request: editedRequest });
+    await logEvent(`User updated the request details`, "request_update");
     setIsEditingRequest(false);
   };
 
   // Customer Handlers
-  const handleSelectNewCustomer = async (customerId: string) => {
+  const handleSelectNewCustomer = async (customerId: string, customerName?: string) => {
     await updateDoc(ticketRef, { customer: doc(db, "customers", customerId) });
+    await logEvent(`User changed linked customer to ${customerName || 'a new customer'}`, "customer_update");
     setIsCustomerDialogOpen(false);
     setCustomerSearch("");
   };
@@ -140,7 +162,8 @@ export default function TicketPage({
     if (e.key === 'Enter') {
       e.preventDefault();
       if (filteredCustomers.length > 0) {
-        await handleSelectNewCustomer(filteredCustomers[0].id);
+        const c = filteredCustomers[0];
+        await handleSelectNewCustomer(c.id, `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.name);
       }
     }
   };
@@ -158,7 +181,7 @@ export default function TicketPage({
       time_updated: serverTimestamp(),
     });
 
-    await handleSelectNewCustomer(newCustomerRef.id);
+    await handleSelectNewCustomer(newCustomerRef.id, `${newCustomerForm.first_name} ${newCustomerForm.last_name}`);
     setIsNewCustomerDialogOpen(false);
     setNewCustomerForm({ first_name: "", last_name: "", email: "", phone: "" });
   };
@@ -171,8 +194,6 @@ export default function TicketPage({
     const count = snapshot.data().count;
     const projectNumber = `PROJ${1000 + count + 1}`;
 
-    const projectName = `New Project`;
-
     await addDoc(collection(db, "projects"), {
       amount: 0,
       amount_due: 0,
@@ -180,9 +201,8 @@ export default function TicketPage({
       customer: ticketData.customer || null,
       invoices: [],
       line_items: [],
-      name: projectName,
       number: projectNumber,
-      status: "quote",
+      status: "draft",
       ticket: ticketRef,
       time_created: serverTimestamp(),
       time_updated: serverTimestamp(),
@@ -388,7 +408,7 @@ export default function TicketPage({
                 {projects.map((project) => (
                   <Link href={`/${company}/project/${project.id}`} key={project.id}>
                     <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                      <CardContent className="p-6">
+                      <CardContent className="p-2">
                         <div className="flex items-center justify-between">
                           <div>
                             <h3 className="text-lg font-semibold text-primary">
@@ -398,8 +418,8 @@ export default function TicketPage({
                               Created on {project.time_created ? new Date(project.time_created.toDate?.() || project.time_created).toLocaleDateString() : 'Unknown'}
                             </p>
                           </div>
-                          <Badge variant={project.status === 'confirmed' ? 'default' : 'outline'} className="text-sm px-3 py-1">
-                            {project.status === 'confirmed' ? 'Confirmed' : 'Quote'}
+                          <Badge variant={['open', 'completed'].includes(project.status?.toLowerCase()) ? 'default' : 'outline'} className="text-sm px-3 py-1">
+                            {['open', 'completed'].includes(project.status?.toLowerCase()) ? 'Active' : 'Draft'}
                           </Badge>
                         </div>
                       </CardContent>

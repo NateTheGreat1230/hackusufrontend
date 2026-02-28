@@ -21,7 +21,7 @@ interface CustomerDetailsBoxProps {
   setCustomerSearch: (val: string) => void;
   handleSearchKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   filteredCustomers: any[];
-  handleSelectNewCustomer: (id: string) => void;
+  handleSelectNewCustomer: (id: string, name?: string) => void;
   isNewCustomerDialogOpen: boolean;
   setIsNewCustomerDialogOpen: (open: boolean) => void;
   newCustomerForm: any;

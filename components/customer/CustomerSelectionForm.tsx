@@ -7,7 +7,7 @@ interface CustomerSelectionFormProps {
   onSearchChange: (val: string) => void;
   onSearchKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   filteredCustomers: any[];
-  onSelectCustomer: (id: string) => void;
+  onSelectCustomer: (id: string, name?: string) => void;
   newCustomerTrigger?: React.ReactNode; 
 }
 
@@ -43,7 +43,7 @@ export function CustomerSelectionForm({
                 </p>
                 {c.email && <p className="text-xs text-muted-foreground truncate">{c.email}</p>}
               </div>
-              <Button size="sm" variant="secondary" onClick={() => onSelectCustomer(c.id)} className="cursor-pointer">
+              <Button size="sm" variant="secondary" onClick={() => onSelectCustomer(c.id, (c.first_name || c.last_name) ? `${c.first_name || ''} ${c.last_name || ''}`.trim() : c.name)} className="cursor-pointer">
                 Select
               </Button>
             </div>

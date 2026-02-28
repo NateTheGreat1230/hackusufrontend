@@ -64,6 +64,7 @@ export interface ProductInstance {
   product?: DocumentReference | any;
   project?: DocumentReference | any;
   qty?: number;
+  price?: number;
   status?: string;
   time_created?: Timestamp | any;
   time_updated?: Timestamp | any;
@@ -95,7 +96,6 @@ export interface Project {
   customer?: DocumentReference | any;
   invoices?: DocumentReference[] | any[];
   line_items?: DocumentReference[] | any[];
-  name?: string;
   number?: string | number;
   status?: string;
   ticket?: DocumentReference | any;
