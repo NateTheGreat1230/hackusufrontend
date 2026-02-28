@@ -2,39 +2,28 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, where } from 'firebase/firestore';
-import { Ticket, Loader2 } from 'lucide-react';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { Ticket as TicketIcon, Loader2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
-
-interface TicketItem {
-  id: string;
-  number?: number;
-  request?: string;
-  status?: string;
-  customer?: any;
-  time_created?: any;
-}
+import { Ticket } from "@/types";
 
 export default function TicketsPage() {
   const router = useRouter();
   const params = useParams();
   const company = params.company as string;
   
-  const [data, setData] = useState<TicketItem[]>([]);
+  const [data, setData] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!company) return;
-    const q = query(
-      collection(db, "tickets"),
-      where("company", "==", doc(db, "companies", company))
-    );
+    // Fetch all tickets uniformly
+    const q = query(collection(db, "tickets"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const result = snapshot.docs.map(val => ({
         id: val.id,
         ...val.data()
-      })) as TicketItem[];
+      })) as Ticket[];
       setData(result);
       setLoading(false);
     }, (error) => {
@@ -49,7 +38,7 @@ export default function TicketsPage() {
     {
       header: "Ticket #",
       key: "number",
-      render: (item: TicketItem) => (
+      render: (item: Ticket) => (
         <span className="font-semibold text-blue-600">
           #{item.number || '---'}
         </span>
@@ -59,12 +48,12 @@ export default function TicketsPage() {
       header: "Request",
       key: "request",
       className: "max-w-[300px] truncate",
-      render: (item: TicketItem) => item.request || "No description"
+      render: (item: Ticket) => item.request || "No description"
     },
     {
       header: "Status",
       key: "status",
-      render: (item: TicketItem) => (
+      render: (item: Ticket) => (
         <span className="capitalize px-2 py-1 bg-muted rounded-md text-xs font-medium border">
           {item.status || "open"}
         </span>
@@ -74,7 +63,7 @@ export default function TicketsPage() {
       header: "Created Date",
       key: "time_created",
       className: "text-sm text-muted-foreground",
-      render: (item: TicketItem) => item.time_created?.toDate 
+      render: (item: Ticket) => item.time_created?.toDate 
         ? item.time_created.toDate().toLocaleDateString() 
         : "Unknown"
     }
@@ -96,7 +85,7 @@ export default function TicketsPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-2 tracking-tight">
-                <Ticket className="text-blue-600" />
+                <TicketIcon className="text-blue-600" />
                 Tickets
               </h1>
               <p className="text-muted-foreground mt-1 text-sm">Manage customer requests and tickets.</p>
@@ -107,8 +96,8 @@ export default function TicketsPage() {
             columns={columns}
             data={data}
             searchPlaceholder="Search tickets..."
-            searchKey={(item: TicketItem) => `${item.number || ''} ${item.request || ''} ${item.status || ''}`}
-            onRowClick={(item: TicketItem) => router.push(`/${company}/ticket/${item.id}`)}
+            searchKey={(item: Ticket) => `${item.number || ''} ${item.request || ''} ${item.status || ''}`}
+            onRowClick={(item: Ticket) => router.push(`/${company}/ticket/${item.id}`)}
             emptyMessage="No tickets found."
           />
         </div>

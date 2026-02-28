@@ -15,20 +15,7 @@ import {
   Clock
 } from 'lucide-react';
 
-// 1. Interface matching your Firestore schema
-interface Invoice {
-  id: string;
-  amount: number;
-  amount_due: number;
-  company?: any; // Reference
-  customer?: any; // Reference
-  project?: any; // Reference
-  timeline?: any; // Reference
-  line_items?: any[]; // Array of References
-  transactions?: any[]; // Array of References
-  time_created?: any; // Timestamp
-  time_updated?: any; // Timestamp
-}
+import { Invoice } from "@/types";
 
 // Helper to safely get an ID from a Firestore Reference
 const getRefId = (ref: any) => (ref?.id ? ref.id : "");
@@ -214,7 +201,7 @@ const InvoiceManager = () => {
                       ${invoice.amount?.toFixed(2)}
                     </td>
                     <td className="p-4">
-                      <PaymentBadge amountDue={invoice.amount_due} />
+                      <PaymentBadge amountDue={invoice.amount_due || 0} />
                     </td>
                     <td className="p-4 text-right">
                       <button 
@@ -321,7 +308,7 @@ const InvoiceManager = () => {
                   <p className="text-sm font-medium text-slate-500">Invoice ID</p>
                   <p className="font-mono text-sm text-slate-900 mt-1">{selectedInvoice.id}</p>
                 </div>
-                <PaymentBadge amountDue={selectedInvoice.amount_due} />
+                <PaymentBadge amountDue={selectedInvoice.amount_due || 0} />
               </div>
 
               <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-4">

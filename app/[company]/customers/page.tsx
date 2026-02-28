@@ -2,21 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Users, Loader2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
-
-interface Customer {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  company_name?: string;
-  company?: any;
-}
+import { Customer } from "@/types";
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -27,11 +17,8 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!company) return;
-    const q = query(
-      collection(db, "customers"),
-      where("company", "==", doc(db, "companies", company))
-    );
+    // Fetch all customers to avoid missing records due to missing/invalid company refs
+    const q = query(collection(db, "customers"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const result = snapshot.docs.map(val => ({
         id: val.id,

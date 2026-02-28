@@ -16,27 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter, useParams } from 'next/navigation';
 
 import { DataTable } from "@/components/DataTable";
-
-// 1. Updated Interface to match your new schema
-interface Product {
-  id: string;
-  name: string;
-  model_number: string;
-  sku: string;
-  upc: string;
-  category: string;
-  type: string;
-  description: string;
-  image: string;
-  qty: number;
-  qty_avail: number;
-  price: number;
-  cost: number;
-  company?: any; // Firestore reference
-  product_instances?: any[]; // Array of references
-  time_created?: any;
-  time_updated?: any;
-}
+import { Product } from "@/types";
 
 const initialFormState = {
   name: "", model_number: "", sku: "", upc: "", category: "Motherboards", type: "Good",
@@ -148,7 +128,7 @@ const InventoryManager = () => {
       header: "Available Stock",
       key: "qty_avail",
       className: "py-2",
-      render: (item: Product) => <StockBadge qty={item.qty_avail} />
+      render: (item: Product) => <StockBadge qty={item.qty_avail || 0} />
     },
     {
       header: "Actions",

@@ -2,39 +2,28 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, doc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Briefcase, Loader2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
-
-interface ProjectItem {
-  id: string;
-  number?: string | number;
-  name?: string;
-  status?: string;
-  cost?: number;
-  time_created?: any;
-}
+import { Project } from "@/types";
 
 export default function ProjectsPage() {
   const router = useRouter();
   const params = useParams();
   const company = params.company as string;
   
-  const [data, setData] = useState<ProjectItem[]>([]);
+  const [data, setData] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!company) return;
-    const q = query(
-      collection(db, "projects"),
-      where("company", "==", doc(db, "companies", company))
-    );
+    // Fetch all projects uniformly
+    const q = query(collection(db, "projects"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const result = snapshot.docs.map(val => ({
         id: val.id,
         ...val.data()
-      })) as ProjectItem[];
+      })) as Project[];
       setData(result);
       setLoading(false);
     }, (error) => {
@@ -49,7 +38,7 @@ export default function ProjectsPage() {
     {
       header: "Project #",
       key: "number",
-      render: (item: ProjectItem) => (
+      render: (item: Project) => (
         <span className="font-semibold text-blue-600">
           {item.number ? `#${item.number}` : '---'}
         </span>
@@ -59,12 +48,12 @@ export default function ProjectsPage() {
       header: "Name",
       key: "name",
       className: "font-medium",
-      render: (item: ProjectItem) => item.name || "Unnamed Project"
+      render: (item: Project) => item.name || "Unnamed Project"
     },
     {
       header: "Status",
       key: "status",
-      render: (item: ProjectItem) => (
+      render: (item: Project) => (
         <span className="capitalize px-2 py-1 bg-muted rounded-md text-xs font-medium border">
           {item.status || "quote"}
         </span>
@@ -73,7 +62,7 @@ export default function ProjectsPage() {
     {
       header: "Cost",
       key: "cost",
-      render: (item: ProjectItem) => (
+      render: (item: Project) => (
         <span className="text-sm text-muted-foreground">
           ${(item.cost || 0).toFixed(2)}
         </span>
@@ -83,7 +72,7 @@ export default function ProjectsPage() {
       header: "Created Date",
       key: "time_created",
       className: "text-sm text-muted-foreground",
-      render: (item: ProjectItem) => item.time_created?.toDate 
+      render: (item: Project) => item.time_created?.toDate 
         ? item.time_created.toDate().toLocaleDateString() 
         : "Unknown"
     }
@@ -116,8 +105,8 @@ export default function ProjectsPage() {
             columns={columns}
             data={data}
             searchPlaceholder="Search projects..."
-            searchKey={(item: ProjectItem) => `${item.number || ''} ${item.name || ''} ${item.status || ''}`}
-            onRowClick={(item: ProjectItem) => router.push(`/${company}/project/${item.id}`)}
+            searchKey={(item: Project) => `${item.number || ''} ${item.name || ''} ${item.status || ''}`}
+            onRowClick={(item: Project) => router.push(`/${company}/project/${item.id}`)}
             emptyMessage="No projects found."
           />
         </div>
