@@ -2,13 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
-// Added addDoc and doc for creating references
 import { collection, onSnapshot, query, addDoc, doc, getDocs } from 'firebase/firestore';
 import { Loader2, Plus, X } from 'lucide-react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Ticket, Customer } from "@/types";
+
+// Import your custom searchable dropdown component
+import { CustomerSelectionForm } from "@/components/customer/CustomerSelectionForm";
 
 export default function TicketsPage() {
   const router = useRouter();
@@ -29,7 +31,11 @@ export default function TicketsPage() {
   // Form Fields
   const [ticketNumber, setTicketNumber] = useState("");
   const [request, setRequest] = useState("");
+  
+  // Customer Selection State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedCustomerName, setSelectedCustomerName] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
 
   useEffect(() => {
     // 1. Fetch Tickets
@@ -46,7 +52,7 @@ export default function TicketsPage() {
       setLoading(false);
     });
 
-    // 2. Fetch Customers for the dropdown
+    // 2. Fetch Customers for the lookup component
     const fetchCustomers = async () => {
       const custSnap = await getDocs(collection(db, "customers"));
       const custList = custSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[];
@@ -57,31 +63,66 @@ export default function TicketsPage() {
     return () => unsubscribe();
   }, [company]);
 
+  // --- Open Modal & Auto-Increment Ticket Number ---
+  const handleOpenModal = async () => {
+    setIsSubmitting(true); // Show a loading state on the button while calculating
+    
+    try {
+      // Query existing tickets to find the highest number
+      const ticketSnap = await getDocs(collection(db, "tickets"));
+      let nextNumber = 1;
+
+      if (!ticketSnap.empty) {
+        // Extract the numbers (e.g., "0512" from "TK0512") and find the max
+        const existingNumbers = ticketSnap.docs.map(d => {
+          const numStr = d.data().number?.replace("TK", "") || "0";
+          return parseInt(numStr, 10) || 0;
+        });
+
+        const maxNumber = Math.max(...existingNumbers, 0);
+        nextNumber = maxNumber + 1;
+      }
+
+      // Format it beautifully like TK0001, TK0002, etc.
+      const paddedNumber = nextNumber.toString().padStart(4, '0');
+      setTicketNumber(`TK${paddedNumber}`);
+      
+      // Clear out the form fields for a fresh slate
+      setRequest("");
+      setSelectedCustomerId("");
+      setSelectedCustomerName("");
+      setCustomerSearch("");
+      
+      // Finally, open the modal
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Error generating ticket number:", error);
+      alert("Could not generate a new ticket number. Please check your connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // --- Handle Ticket Submission ---
   const handleAddTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomerId) return alert("Please select a customer");
+    if (!selectedCustomerId) return alert("Please select a customer first!");
     
     setIsSubmitting(true);
 
     try {
-      // Matches your firebase screenshot structure exactly
       await addDoc(collection(db, "tickets"), {
         number: ticketNumber,
         request: request,
         status: "open",
-        customer: doc(db, "customers", selectedCustomerId), // Reference
-        company: doc(db, "companies", company), // Reference
-        assigned_users: [], // Initializing as empty array per screenshot
-        projects: [], // Initializing as empty array per screenshot
+        customer: doc(db, "customers", selectedCustomerId), // Firebase Reference
+        company: doc(db, "companies", company), // Firebase Reference
+        assigned_users: [],
+        projects: [],
         time_created: new Date(),
         time_updated: new Date(),
       });
 
-      // Reset & Close
-      setTicketNumber("");
-      setRequest("");
-      setSelectedCustomerId("");
       setIsModalOpen(false);
     } catch (error) {
       console.error("Error adding ticket:", error);
@@ -91,10 +132,17 @@ export default function TicketsPage() {
     }
   };
 
+  // --- Filters ---
   const filteredData = data.filter((item) => {
     if (!searchQuery) return true;
     const searchString = `${item.number || ''} ${item.request || ''} ${item.status || ''}`.toLowerCase();
     return searchString.includes(searchQuery);
+  });
+
+  const filteredModalCustomers = customers.filter(c => {
+    if (!customerSearch) return true;
+    const searchStr = `${c.first_name || ''} ${c.last_name || ''} ${c.email || ''} ${c.company_name || ''}`.toLowerCase();
+    return searchStr.includes(customerSearch.toLowerCase());
   });
 
   const columns = [
@@ -102,7 +150,7 @@ export default function TicketsPage() {
       header: "Ticket #",
       key: "number",
       render: (item: Ticket) => (
-        <span className="cursor-pointer shrink-0 ml-4">
+        <span className="font-semibold text-blue-600">
           {item.number || '---'}
         </span>
       )
@@ -151,10 +199,12 @@ export default function TicketsPage() {
               Manage customer requests and tickets.
             </p>
             <Button 
-              onClick={() => setIsModalOpen(true)} 
+              onClick={handleOpenModal} 
+              disabled={isSubmitting} // Prevent double clicks while calculating the next ID
               className="cursor-pointer shrink-0 ml-4"
             >
-              <Plus className="w-4 h-4 mr-2" /> Create Ticket
+              {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              Create Ticket
             </Button>
           </div>
 
@@ -185,29 +235,43 @@ export default function TicketsPage() {
                 <label className="text-sm font-medium text-slate-700">Ticket Number</label>
                 <input 
                   type="text" 
-                  required
-                  placeholder="e.g. TK0512"
+                  readOnly
                   value={ticketNumber}
-                  onChange={(e) => setTicketNumber(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed" 
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Customer</label>
-                <select 
-                  required
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
-                >
-                  <option value="">Select a customer</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.first_name} {c.last_name} {c.company_name ? `(${c.company_name})` : ''}
-                    </option>
-                  ))}
-                </select>
+                
+                {/* Conditional rendering: Show selected customer OR the search form */}
+                {selectedCustomerId ? (
+                  <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50">
+                    <span className="font-medium text-sm text-slate-900">{selectedCustomerName}</span>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="cursor-pointer shrink-0 ml-4"
+                      onClick={() => {
+                        setSelectedCustomerId("");
+                        setSelectedCustomerName("");
+                      }}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <CustomerSelectionForm
+                    searchQuery={customerSearch}
+                    onSearchChange={setCustomerSearch}
+                    filteredCustomers={filteredModalCustomers}
+                    onSelectCustomer={(id, name) => {
+                      setSelectedCustomerId(id);
+                      setSelectedCustomerName(name || "Unknown Customer");
+                    }}
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -225,7 +289,7 @@ export default function TicketsPage() {
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="cursor-pointer shrink-0 ml-4">
+                <Button type="submit" disabled={isSubmitting || !selectedCustomerId} className="cursor-pointer shrink-0 ml-4">
                   {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 mx-auto" /> : 'Create Ticket'}
                 </Button>
               </div>
