@@ -3,8 +3,9 @@
 import { use, useEffect, useState } from "react";
 import Timeline from "@/components/Timeline";
 import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot, query, updateDoc, addDoc, serverTimestamp, getCountFromServer, deleteDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, addDoc, serverTimestamp, getCountFromServer, deleteDoc, getDocs, where, getDoc, runTransaction } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Product } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, CircleDashed, X, MoreHorizontal, Copy, Trash, FileText, Link as LinkIcon, ExternalLink, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -13,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { CustomerDetailsBox } from "@/components/customer/CustomerDetailsBox";
 import { LineItemsManager } from "@/components/project/LineItemsManager";
 import { InvoiceManager } from "@/components/project/InvoiceManager";
+import { ManufacturingManager } from "@/components/project/ManufacturingManager";
 import { AssigneeSelector } from "@/components/AssigneeSelector";
 import { useBreadcrumbs } from "@/lib/breadcrumb-context";
+import { useDialog } from "@/lib/dialog-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +34,7 @@ export default function ProjectPage({
   const router = useRouter();
   const { user } = useAuth();
   const { setCustomTitle } = useBreadcrumbs();
+  const { alert, confirm } = useDialog();
 
   const [projectData, setProjectData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
@@ -129,6 +133,93 @@ export default function ProjectPage({
     if (newStatus === baseStatus) return;
     await updateDoc(projectRef, { status: newStatus });
     await logEvent(`Changed project status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update", true);
+  };
+
+  const handleApprove = async () => {
+    try {
+      await updateDoc(doc(db, "projects", id), { approved: true, rejected: false, status: "open" });
+      
+      const itemsQuery = query(collection(db, "product_instances"), where("project", "==", doc(db, "projects", id)));
+      const itemsSnap = await getDocs(itemsQuery);
+      
+      for (const itemDoc of itemsSnap.docs) {
+          const itemData = itemDoc.data();
+          if (itemData.product) {
+              const productId = typeof itemData.product === 'string' ? itemData.product : itemData.product.id;
+              const productRef = doc(db, "products", productId);
+              const productSnap = await getDoc(productRef);
+              
+              if (productSnap.exists()) {
+                  const prodData = productSnap.data() as Product;
+                  if (prodData.is_manufactured) {
+                      let stepsToUse = prodData.manufacturing_steps || [];
+                      
+                      await runTransaction(db, async (transaction) => {
+                          const counterRef = doc(db, "counters", "manufacturing_orders");
+                          const counterSnap = await transaction.get(counterRef);
+
+                          let newNumber = 1001;
+                          if (counterSnap.exists()) {
+                              const data = counterSnap.data();
+                              newNumber = (data.last_number || 1000) + 1;
+                          }
+
+                          transaction.set(counterRef, { last_number: newNumber }, { merge: true });
+
+                          const newOrderRef = doc(collection(db, "manufacturing_orders"));
+                          
+                          const formattedSteps = stepsToUse.map((s: any, idx: number) => ({
+                              id: `step-${Date.now()}-${idx}`,
+                              description: s.description || s,
+                              is_completed: false,
+                              notes: ""
+                          }));
+
+                          transaction.set(newOrderRef, {
+                              number: newNumber,
+                              company: doc(db, "companies", company),
+                              project: doc(db, "projects", id),
+                              product_ref: productRef,
+                              product_name: prodData.name || `MO-${newNumber}`,
+                              status: "not_started",
+                              start_date: serverTimestamp(),
+                              steps: formattedSteps,
+                              bom: prodData.bom || [],
+                              product_instance_id: itemDoc.id,
+                              qty: itemData.qty || 1,
+                              time_created: serverTimestamp(),
+                              time_updated: serverTimestamp()
+                          });
+
+                          return newOrderRef.id;
+                      });
+                  }
+              }
+          }
+      }
+
+      if (projectData.ticket) {
+        const ticketRef = typeof projectData.ticket === 'string' 
+          ? doc(db, projectData.ticket) 
+          : doc(db, "tickets", projectData.ticket.id);
+        await updateDoc(ticketRef, { status: "complete" });
+      }
+
+      await logEvent("Manually marked proposal as Approved.", "approval", true);
+    } catch (err) {
+       console.error("Error approving project or generating orders:", err);
+       await alert("Error approving project or generating orders. Please check console.");
+    }
+  };
+
+  const handlePending = async () => {
+    await updateDoc(doc(db, "projects", id), { approved: false, rejected: false });
+    await logEvent("Reset proposal to Pending status.", "status_update", true);
+  };
+
+  const handleReject = async () => {
+    await updateDoc(doc(db, "projects", id), { approved: false, rejected: true });
+    await logEvent("Manually marked proposal as Rejected.", "rejection", true);
   };
 
   const handleCopyLink = async () => {
@@ -233,7 +324,7 @@ export default function ProjectPage({
   };
 
   const handleDeleteProject = async () => {
-    if (confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
+    if (await confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
       await deleteDoc(projectRef);
       router.push(`/${company}/projects`);
     }
@@ -327,66 +418,42 @@ export default function ProjectPage({
                 <CardTitle className="text-lg flex items-center gap-2">
                   <FileText className="w-5 h-5" /> Project Information
                 </CardTitle>
-                {projectData.approved ? (
-                  <div className="flex items-center gap-1 text-green-700 bg-green-50 px-2 py-1 rounded-md border border-green-200">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span className="text-xs font-semibold">Approved</span>
-                  </div>
-                ) : projectData.rejected ? (
-                  <div className="flex items-center gap-1 text-red-700 bg-red-50 px-2 py-1 rounded-md border border-red-200">
-                    <X className="w-3 h-3" />
-                    <span className="text-xs font-semibold">Rejected</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-yellow-700 bg-yellow-50 px-2 py-1 rounded-md border border-yellow-200">
-                    <CircleDashed className="w-3 h-3" />
-                    <span className="text-xs font-semibold">Pending</span>
-                  </div>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-auto py-1 px-2 text-xs rounded-md cursor-pointer border shadow-sm">
+                      {projectData.approved ? (
+                        <div className="flex items-center gap-1 text-green-700">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span className="font-semibold">Approved</span>
+                        </div>
+                      ) : projectData.rejected ? (
+                        <div className="flex items-center gap-1 text-red-700">
+                          <X className="w-3 h-3" />
+                          <span className="font-semibold">Rejected</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-yellow-700">
+                          <CircleDashed className="w-3 h-3" />
+                          <span className="font-semibold">Pending</span>
+                        </div>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem className="cursor-pointer" onClick={handleApprove}>
+                      <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Approved
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={handlePending}>
+                      <CircleDashed className="w-4 h-4 mr-2 text-yellow-500" /> Pending
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={handleReject}>
+                      <X className="w-4 h-4 mr-2 text-red-500" /> Rejected
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardHeader>
               <CardContent className="mt-2">
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 flex-wrap pb-4">
-                    <Button 
-                      size="sm"
-                      variant={projectData.approved ? "default" : "outline"} 
-                      className={projectData.approved ? "bg-green-600 hover:bg-green-700 cursor-pointer flex-1" : "cursor-pointer flex-1"} 
-                      onClick={async () => {
-                        await updateDoc(doc(db, "projects", id), { approved: true, rejected: false, status: "open" });
-                        
-                        if (projectData.ticket) {
-                          const ticketRef = typeof projectData.ticket === 'string' 
-                            ? doc(db, projectData.ticket) 
-                            : doc(db, "tickets", projectData.ticket.id);
-                          await updateDoc(ticketRef, { status: "complete" });
-                        }
-
-                        await logEvent("Manually marked proposal as Approved.", "approval", true);
-                      }}>
-                      Approved
-                    </Button>
-                    <Button 
-                      size="sm"
-                      variant={(!projectData.approved && !projectData.rejected) ? "default" : "outline"} 
-                      className={(!projectData.approved && !projectData.rejected) ? "bg-yellow-600 hover:bg-yellow-700 text-white cursor-pointer flex-1" : "cursor-pointer flex-1"}
-                      onClick={async () => {
-                        await updateDoc(doc(db, "projects", id), { approved: false, rejected: false });
-                        await logEvent("Reset proposal to Pending status.", "status_update", true);
-                      }}>
-                      Pending
-                    </Button>
-                    <Button 
-                      size="sm"
-                      variant={projectData.rejected ? "default" : "outline"}
-                      className={projectData.rejected ? "bg-red-600 hover:bg-red-700 cursor-pointer flex-1" : "cursor-pointer flex-1"}
-                      onClick={async () => {
-                        await updateDoc(doc(db, "projects", id), { approved: false, rejected: true });
-                        await logEvent("Manually marked proposal as Rejected.", "rejection", true);
-                      }}>
-                      Rejected
-                    </Button>
-                  </div>
-                  
                   <div className="flex items-center gap-2 w-full">
                     <Button variant="outline" className="flex-1 cursor-pointer" onClick={handleOpenPortal}>
                       <ExternalLink className="w-4 h-4 mr-2" /> View Portal
@@ -422,6 +489,9 @@ export default function ProjectPage({
 
           {/* Invoice Manager */}
           <InvoiceManager companyId={company} projectId={id} projectData={projectData} logEvent={logEvent} />
+
+          {/* Manufacturing Manager */}
+          <ManufacturingManager companyId={company} projectId={id} />
 
           {/* Line Items Manager */}
           <LineItemsManager companyId={company} projectId={id} projectData={projectData} logEvent={logEvent} />

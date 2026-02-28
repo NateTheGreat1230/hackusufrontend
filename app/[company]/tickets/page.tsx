@@ -9,11 +9,13 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Ticket, Customer } from "@/types";
+import { useDialog } from "@/lib/dialog-context";
 
 export default function TicketsPage() {
   const router = useRouter();
   const params = useParams();
   const company = params.company as string;
+  const { alert } = useDialog();
   
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
@@ -60,7 +62,10 @@ export default function TicketsPage() {
   // --- Handle Ticket Submission ---
   const handleAddTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomerId) return alert("Please select a customer");
+    if (!selectedCustomerId) {
+      await alert("Please select a customer");
+      return;
+    }
     
     setIsSubmitting(true);
 
@@ -85,7 +90,7 @@ export default function TicketsPage() {
       setIsModalOpen(false);
     } catch (error) {
       console.error("Error adding ticket:", error);
-      alert("Failed to create ticket.");
+      await alert("Failed to create ticket.");
     } finally {
       setIsSubmitting(false);
     }

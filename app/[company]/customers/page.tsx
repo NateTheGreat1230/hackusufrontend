@@ -9,11 +9,13 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Customer } from "@/types";
+import { useDialog } from "@/lib/dialog-context";
 
 export default function CustomersPage() {
   const router = useRouter();
   const params = useParams();
   const company = params.company as string;
+  const { alert } = useDialog();
   
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
@@ -93,7 +95,7 @@ export default function CustomersPage() {
       setIsModalOpen(false);
     } catch (error) {
       console.error("Error adding customer:", error);
-      alert("Failed to add customer. Please try again.");
+      await alert("Failed to add customer. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

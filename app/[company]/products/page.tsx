@@ -16,6 +16,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 
 import { DataTable } from "@/components/DataTable";
 import { Product } from "@/types";
+import { useDialog } from "@/lib/dialog-context";
 
 const initialFormState = {
   name: "", model_number: "", sku: "", upc: "", category: "Motherboards", type: "Good",
@@ -26,6 +27,7 @@ const InventoryManager = () => {
   const router = useRouter();
   const params = useParams();
   const company = params.company as string;
+  const { alert } = useDialog();
   
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
@@ -100,7 +102,7 @@ const InventoryManager = () => {
       setIsAddModalOpen(false);
     } catch (error) {
       console.error("Error adding document: ", error);
-      alert("Failed to add product. Check console for details.");
+      await alert("Failed to add product. Check console for details.");
     } finally {
       setIsSubmitting(false);
     }

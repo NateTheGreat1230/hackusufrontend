@@ -19,6 +19,7 @@ import { useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Invoice } from "@/types";
+import { useDialog } from "@/lib/dialog-context";
 
 // Helper to safely get an ID from a Firestore Reference
 const getRefId = (ref: any) => (ref?.id ? ref.id : "");
@@ -36,6 +37,7 @@ const initialFormState = {
 const InvoiceManager = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const { alert } = useDialog();
   
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
@@ -117,7 +119,7 @@ const InvoiceManager = () => {
       setFormData(initialFormState);
     } catch (error) {
       console.error("Error saving document: ", error);
-      alert("Failed to save invoice. Check console for details.");
+      await alert("Failed to save invoice. Check console for details.");
     } finally {
       setIsSubmitting(false);
     }

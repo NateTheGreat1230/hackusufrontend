@@ -9,11 +9,13 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Project, Customer, Ticket } from "@/types";
+import { useDialog } from "@/lib/dialog-context";
 
 export default function ProjectsPage() {
   const router = useRouter();
   const params = useParams();
   const company = params.company as string;
+  const { alert } = useDialog();
   
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
@@ -63,7 +65,10 @@ export default function ProjectsPage() {
   // --- NEW: Handle Project Submission ---
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomerId) return alert("Please select a customer");
+    if (!selectedCustomerId) {
+      await alert("Please select a customer");
+      return;
+    }
     
     setIsSubmitting(true);
 
@@ -92,7 +97,7 @@ export default function ProjectsPage() {
       setIsModalOpen(false);
     } catch (error) {
       console.error("Error adding project:", error);
-      alert("Failed to create project.");
+      await alert("Failed to create project.");
     } finally {
       setIsSubmitting(false);
     }

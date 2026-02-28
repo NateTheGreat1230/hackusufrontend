@@ -70,6 +70,16 @@ export interface ProductInstance {
   time_updated?: Timestamp | any;
 }
 
+export interface BOMEntry {
+  product: DocumentReference | any; // Reference to the component product
+  qty: number;
+  is_picked?: boolean;
+}
+
+export interface ManufacturingStepTemplate {
+  description: string;
+}
+
 export interface Product {
   id: string;
   category?: string;
@@ -88,6 +98,12 @@ export interface Product {
   time_updated?: Timestamp | any;
   type?: string;
   upc?: number | string;
+  
+  // Manufacturing fields
+  is_manufactured?: boolean;
+  bom?: BOMEntry[]; 
+  manufacturing_steps?: ManufacturingStepTemplate[];
+  manufacturing_template_id?: string;
 }
 
 export interface Project {
@@ -106,6 +122,7 @@ export interface Project {
   token?: string;
   approved?: boolean;
   rejected?: boolean;
+  manufacturing_orders?: DocumentReference[] | any[];
 }
 
 export interface Ticket {
@@ -152,4 +169,25 @@ export interface Transaction {
   stripe_id?: string;
   time_created?: Timestamp | any;
   type?: string;
+}
+
+export interface ManufacturingStep {
+  id: string;
+  description: string;
+  is_completed: boolean;
+  notes?: string;
+}
+
+export interface ManufacturingOrder {
+  id: string;
+  project?: DocumentReference | any;
+  product_name?: string;
+  product_ref?: DocumentReference | any; // Reference to the actual Product
+  status?: string;
+  steps?: ManufacturingStep[];
+  time_created?: Timestamp | any;
+  time_updated?: Timestamp | any;
+  number?: string | number;
+  qty?: number;
+  bom?: BOMEntry[]; 
 }

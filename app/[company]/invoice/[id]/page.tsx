@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDialog } from "@/lib/dialog-context";
 
 export default function InvoicePage({
   params,
@@ -29,6 +30,7 @@ export default function InvoicePage({
   const id = resolvedParams.id;
   const router = useRouter();
   const { setCustomTitle } = useBreadcrumbs();
+  const { alert } = useDialog();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [lineItems, setLineItems] = useState<any[]>([]);
@@ -145,8 +147,14 @@ export default function InvoicePage({
     const amount = parseFloat(paymentAmount);
     
     // Safety checks
-    if (isNaN(amount) || amount <= 0) return alert("Please enter a valid amount.");
-    if (amount > invoice.amount_due) return alert("You cannot pay more than the amount due.");
+    if (isNaN(amount) || amount <= 0) {
+        await alert("Please enter a valid amount.");
+        return;
+    }
+    if (amount > invoice.amount_due) {
+        await alert("You cannot pay more than the amount due.");
+        return;
+    }
 
     setIsProcessing(true);
 
@@ -190,13 +198,13 @@ export default function InvoicePage({
           window.location.href = data.url;
         } else {
           console.error("Stripe error:", data.error);
-          alert("Failed to connect to Stripe. Make sure your API keys are in .env.local and you restarted your server!");
+          await alert("Failed to connect to Stripe. Make sure your API keys are in .env.local and you restarted your server!");
           setIsProcessing(false);
         }
       }
     } catch (error) {
       console.error("Payment error:", error);
-      alert("There was an error processing the payment.");
+      await alert("There was an error processing the payment.");
     } finally {
       setIsProcessing(false);
     }
