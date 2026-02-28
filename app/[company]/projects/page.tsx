@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
-// 1. ADD useSearchParams HERE
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 import { Project } from "@/types";
@@ -14,7 +13,6 @@ export default function ProjectsPage() {
   const params = useParams();
   const company = params.company as string;
   
-  // 2. INITIALIZE the search params hook
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
 
@@ -22,7 +20,6 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch all projects uniformly
     const q = query(collection(db, "projects"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const result = snapshot.docs.map(val => ({
@@ -39,11 +36,11 @@ export default function ProjectsPage() {
     return () => unsubscribe();
   }, [company]);
 
-  // 3. FILTER USING searchQuery
   const filteredData = data.filter((item) => {
     if (!searchQuery) return true;
 
-    const searchString = `${item.number || ''} ${item.name || ''} ${item.status || ''}`.toLowerCase();
+    // Using title instead of name to fix the TypeScript error
+    const searchString = `${item.number || ''} ${item.title || ''} ${item.status || ''}`.toLowerCase();
     
     return searchString.includes(searchQuery);
   });
@@ -60,16 +57,16 @@ export default function ProjectsPage() {
     },
     {
       header: "Name",
-      key: "name",
+      key: "title",
       className: "font-medium",
-      render: (item: Project) => item.name || "Unnamed Project"
+      render: (item: Project) => item.title || "Unnamed Project"
     },
     {
       header: "Status",
       key: "status",
       render: (item: Project) => (
         <span className="capitalize px-2 py-1 bg-muted rounded-md text-xs font-medium border">
-          {item.status || "quote"}
+          {item.status || "draft"}
         </span>
       )
     },
@@ -106,17 +103,14 @@ export default function ProjectsPage() {
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
           
-          {/* 4. Action Bar with Description */}
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Manage projects and quotes.
             </p>
-            {/* If you ever add a "Create Project" button, put it right here! */}
           </div>
 
           <DataTable 
             columns={columns}
-            // 5. PASS FILTERED DATA AND CLEAN UP PROPS
             data={filteredData}
             onRowClick={(item: Project) => router.push(`/${company}/project/${item.id}`)}
             emptyMessage={searchQuery ? `No projects found matching "${searchQuery}".` : "No projects found."}

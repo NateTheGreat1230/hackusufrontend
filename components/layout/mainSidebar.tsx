@@ -37,8 +37,10 @@ export function MainSidebar({ company }: { company: string }) {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="px-4 py-2">
-        {state === "expanded" && <span className="font-semibold text-3xl">enflo</span>}
+      <SidebarHeader className={`py-4 ${state === "expanded" ? "px-4" : "px-0 flex items-center justify-center"}`}>
+        <span className="font-semibold text-3xl border-b-4 border-green-500 inline-block pb-1">
+          {state === "expanded" ? "enflo" : "e"}
+        </span>
       </SidebarHeader>
 
       <SidebarContent>
