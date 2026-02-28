@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation"
 
 // 1. IMPORT YOUR NEW COMPONENT HERE (Adjust the path if needed)
 import { GlobalSearch } from "./globalSearch" 
+import Link from "next/link"
 
 export function MainHeader({ company }: { company: string }) {
   const pathname = usePathname()
@@ -65,7 +66,14 @@ export function MainHeader({ company }: { company: string }) {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/${company}/profile`}
+                className="cursor-pointer w-full"
+              >
+                Profile
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem className="cursor-pointer">Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-red-500 cursor-pointer">Log out</DropdownMenuItem>
