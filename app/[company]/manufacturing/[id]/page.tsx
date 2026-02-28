@@ -14,6 +14,7 @@ import { CheckCircle2, CircleDashed, Circle, Plus, Trash2, ArrowLeft, PackageChe
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useDialog } from "@/lib/dialog-context";
+import { formatEntityNumber } from "@/lib/utils";
 
 export default function ManufacturingOrderPage({
   params,
@@ -264,7 +265,7 @@ export default function ManufacturingOrderPage({
                        const entryData: any = {
                            company: doc(db, "companies", company),
                            generated_by: doc(db, "manufacturing_orders", id),
-                           note: `Manufacturing Order ${order.number ? `#${order.number}` : id} was completed.`,
+                           note: `Manufacturing Order ${order.number ? formatEntityNumber(order.number, 'MO') : id} was completed.`,
                            type: "manufacturing_completion",
                            is_public: false,
                            timeline: timelineRef,
@@ -313,7 +314,7 @@ export default function ManufacturingOrderPage({
         </Button>
         <div className="flex-1">
              <h1 className="text-2xl font-bold">
-                 {order.number ? `MO #${order.number}` : "Manufacturing Order"}
+                 {order.number ? formatEntityNumber(order.number, 'MO') : "Manufacturing Order"}
              </h1>
              <div className="flex items-center gap-2 text-muted-foreground text-sm">
                  <span className="font-medium text-foreground">{order.product_name || "Unnamed Product"}</span>

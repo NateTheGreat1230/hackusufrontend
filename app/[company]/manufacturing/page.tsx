@@ -8,6 +8,7 @@ import { ManufacturingOrder, Project, Product } from "@/types";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/DataTable";
 import { Plus, Loader2, Settings } from "lucide-react";
+import { formatEntityNumber } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -130,12 +131,12 @@ export default function ManufacturingPage() {
     {
       header: "Order #",
       key: "number",
-      render: (item: ManufacturingOrder) => <span className="font-mono text-sm">{item.number ? `MO-${item.number}` : item.id.slice(0,8)}</span>
+      render: (item: ManufacturingOrder) => <span className="font-mono text-sm">{item.number ? formatEntityNumber(item.number, 'MO') : item.id.slice(0,8)}</span>
     },
     {
       header: "Product Name",
       key: "product_name",
-      render: (item: ManufacturingOrder) => <span className="font-medium">{item.product_name || `MO #${item.number}`}</span>
+      render: (item: ManufacturingOrder) => <span className="font-medium">{item.product_name || (item.number ? formatEntityNumber(item.number, 'MO') : item.id.slice(0,8))}</span>
     },
     {
       header: "Status",
@@ -224,7 +225,7 @@ export default function ManufacturingPage() {
                   <SelectContent>
                     {projects.map(p => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.number ? `Project #${p.number}` : p.id}
+                        {p.number ? formatEntityNumber(p.number, 'PROJ') : p.id}
                       </SelectItem>
                     ))}
                   </SelectContent>

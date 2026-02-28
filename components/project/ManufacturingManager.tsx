@@ -7,6 +7,7 @@ import { ClipboardList, Plus, ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ManufacturingOrder, Product } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { formatEntityNumber } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -187,7 +188,7 @@ export function ManufacturingManager({ companyId, projectId }: ManufacturingMana
           >
             <div className="space-y-1">
               <div className="text-sm font-medium flex items-center">
-                 {order.number ? `MO-${order.number}` : (order.product_name || "Unnamed Build")}
+                 {order.number ? formatEntityNumber(order.number, 'MO') : (order.product_name || "Unnamed Build")}
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-2">
                   <span>{order.steps?.filter(s => s.is_completed).length || 0} / {order.steps?.length || 0} steps</span>

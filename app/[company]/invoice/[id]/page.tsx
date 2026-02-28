@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useBreadcrumbs } from "@/lib/breadcrumb-context";
+import { formatEntityNumber } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -48,8 +49,7 @@ export default function InvoicePage({
   useEffect(() => {
     if (invoice) {
       if (invoice.number) {
-        const numStr = String(invoice.number);
-        setCustomTitle(numStr.startsWith("INV") ? numStr : `INV${numStr}`);
+        setCustomTitle(formatEntityNumber(invoice.number, 'INV'));
       } else {
         setCustomTitle(invoice.id.toUpperCase().slice(0, 8));
       }
@@ -181,7 +181,7 @@ export default function InvoicePage({
             amount: amount,
             invoiceId: invoice.id,
             companyId: company,
-            invoiceNumber: invoice.number || invoice.id,
+            invoiceNumber: formatEntityNumber(invoice.number, 'INV'),
             currentUrl: window.location.href, 
           }),
         });
@@ -220,7 +220,7 @@ export default function InvoicePage({
 
   // Determine final display number for the UI
   const displayInvoiceNum = invoice.number 
-    ? (String(invoice.number).startsWith("INV") ? invoice.number : `INV${invoice.number}`)
+    ? formatEntityNumber(invoice.number, 'INV')
     : invoice.id.toUpperCase().slice(0, 8);
 
   return (
@@ -321,7 +321,7 @@ export default function InvoicePage({
                     <div className="flex justify-between border-b pb-2">
                       <span className="text-gray-500">Project</span>
                       <Link href={`/${company}/project/${invoice.project.id}`} className="font-medium text-blue-600 hover:underline">
-                        {projectData?.number || invoice.project.id.toUpperCase().slice(0, 8)}
+                        {projectData?.number ? formatEntityNumber(projectData.number, 'PROJ') : invoice.project.id.toUpperCase().slice(0, 8)}
                       </Link>
                     </div>
                   )}

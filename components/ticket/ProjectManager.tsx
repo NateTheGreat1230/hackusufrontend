@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FolderGit2, Plus, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { formatEntityNumber } from "@/lib/utils";
 
 interface ProjectManagerProps {
   companyId: string;
@@ -59,7 +60,7 @@ export function ProjectManager({ companyId, ticketId, ticketData, logEvent }: Pr
     });
 
     if (logEvent) {
-      await logEvent(`Created Project ${newProjectNumber}.`, "project_created");
+        await logEvent(`Created Project ${formatEntityNumber(newProjectNumber, 'PROJ')}.`, "project_created");
     }
 
     router.push(`/${companyId}/project/${newProjectRef.id}`);
@@ -90,7 +91,7 @@ export function ProjectManager({ companyId, ticketId, ticketData, logEvent }: Pr
               >
                 <div className="flex flex-col">
                   <span className="font-medium text-blue-600 hover:underline">
-                    {proj.number ? proj.number : `Project #${proj.id.slice(0,6)}`}
+                    {proj.number ? formatEntityNumber(proj.number, 'PROJ') : `Project ${proj.id.slice(0,6)}`}
                   </span>
                   <span className="text-xs text-muted-foreground">
                      {new Date(proj.time_created?.toMillis?.() || Date.now()).toLocaleDateString()}
