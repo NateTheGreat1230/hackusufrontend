@@ -151,6 +151,7 @@ export default function TicketsPage() {
       });
 
       setIsModalOpen(false);
+      router.push(`/${company}/ticket/${newTicketRef.id}`);
     } catch (error) {
       console.error("Error adding ticket:", error);
       await alert("Failed to create ticket.");
