@@ -6,6 +6,8 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
+
+// Notice: We don't even need to worry about the Project type right here if we just use the fields we know exist!
 import { Project } from "@/types";
 
 export default function ProjectsPage() {
@@ -39,8 +41,8 @@ export default function ProjectsPage() {
   const filteredData = data.filter((item) => {
     if (!searchQuery) return true;
 
-    // Using title instead of name to fix the TypeScript error
-    const searchString = `${item.number || ''} ${item.title || ''} ${item.status || ''}`.toLowerCase();
+    // We only search by number and status now since name doesn't exist
+    const searchString = `${item.number || ''} ${item.status || ''}`.toLowerCase();
     
     return searchString.includes(searchQuery);
   });
@@ -49,33 +51,38 @@ export default function ProjectsPage() {
     {
       header: "Project #",
       key: "number",
-      render: (item: Project) => (
-        <span className="font-semibold text-blue-600">
-          {item.number ? `#${item.number}` : '---'}
+      render: (item: any) => (
+        <span className="font-semibold text-slate-900">
+          {item.number ? `${item.number}` : '---'}
         </span>
       )
     },
     {
-      header: "Name",
-      key: "title",
+      header: "Amount",
+      key: "amount",
       className: "font-medium",
-      render: (item: Project) => item.title || "Unnamed Project"
+      render: (item: any) => (
+        <span className="text-sm">
+          ${(item.amount || 0).toFixed(2)}
+        </span>
+      )
+    },
+    {
+      header: "Amount Due",
+      key: "amount_due",
+      className: "font-medium",
+      render: (item: any) => (
+        <span className="text-sm text-red-600">
+          ${(item.amount_due || 0).toFixed(2)}
+        </span>
+      )
     },
     {
       header: "Status",
       key: "status",
-      render: (item: Project) => (
+      render: (item: any) => (
         <span className="capitalize px-2 py-1 bg-muted rounded-md text-xs font-medium border">
           {item.status || "draft"}
-        </span>
-      )
-    },
-    {
-      header: "Cost",
-      key: "cost",
-      render: (item: Project) => (
-        <span className="text-sm text-muted-foreground">
-          ${(item.cost || 0).toFixed(2)}
         </span>
       )
     },
@@ -83,7 +90,7 @@ export default function ProjectsPage() {
       header: "Created Date",
       key: "time_created",
       className: "text-sm text-muted-foreground",
-      render: (item: Project) => item.time_created?.toDate 
+      render: (item: any) => item.time_created?.toDate 
         ? item.time_created.toDate().toLocaleDateString() 
         : "Unknown"
     }
