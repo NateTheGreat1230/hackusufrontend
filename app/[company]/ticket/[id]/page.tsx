@@ -17,6 +17,7 @@ import { ProjectManager } from "@/components/ticket/ProjectManager";
 import { AssigneeSelector } from "@/components/AssigneeSelector";
 import { useBreadcrumbs } from "@/lib/breadcrumb-context";
 import { useDialog } from "@/lib/dialog-context";
+import { formatEntityNumber } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,7 +62,7 @@ export default function TicketPage({
         const data = snap.data();
         setTicketData(data);
         if (data.number) {
-          setCustomTitle(String(data.number));
+          setCustomTitle(formatEntityNumber(data.number, 'TK'));
         } else {
           setCustomTitle(id);
         }
@@ -228,7 +229,7 @@ export default function TicketPage({
     const entryData: any = {
       company: doc(db, "companies", company),
       generated_by: newTicketRef,
-      note: `Ticket was duplicated from ticket #${ticketData.number || id}.`,
+      note: `Ticket was duplicated from ticket ${formatEntityNumber(ticketData.number, 'TK')}.`,
       time_created: serverTimestamp(),
       time_updated: serverTimestamp(),
       timeline: newTimelineRef,
@@ -259,7 +260,7 @@ export default function TicketPage({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-3">
-                {ticketData.number ? ticketData.number : id}
+                {ticketData.number ? formatEntityNumber(ticketData.number, 'TK') : id}
               </h1>
               <AssigneeSelector 
                 company={company} 

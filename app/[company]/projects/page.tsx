@@ -9,6 +9,7 @@ import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Project, Customer, Ticket } from "@/types";
 import { useDialog } from "@/lib/dialog-context";
+import { formatEntityNumber } from "@/lib/utils";
 
 // Import your custom searchable dropdown components
 import { CustomerSelectionForm } from "@/components/customer/CustomerSelectionForm";
@@ -202,7 +203,7 @@ export default function ProjectsPage() {
       key: "number",
       render: (item: any) => (
         <span className="font-semibold text-slate-900">
-          {item.number ? `${item.number}` : '---'}
+          {item.number ? formatEntityNumber(item.number, 'PROJ') : '---'}
         </span>
       )
     },
@@ -301,10 +302,10 @@ export default function ProjectsPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Project Number</label>
                   <input 
-                    type="number" 
+                    type="text" 
                     readOnly
-                    value={projectNumber}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed" 
+                    value={formatEntityNumber(projectNumber, 'PROJ')}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed"
                   />
                 </div>
 

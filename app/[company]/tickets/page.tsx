@@ -9,6 +9,7 @@ import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Ticket, Customer } from "@/types";
 import { useDialog } from "@/lib/dialog-context";
+import { formatEntityNumber } from "@/lib/utils";
 
 // Import your custom searchable dropdown component
 import { CustomerSelectionForm } from "@/components/customer/CustomerSelectionForm";
@@ -31,7 +32,7 @@ export default function TicketsPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   
   // Form Fields
-  const [ticketNumber, setTicketNumber] = useState("");
+  const [ticketNumber, setTicketNumber] = useState<number | "">("");
   const [request, setRequest] = useState("");
   
   // Customer Selection State
@@ -72,22 +73,26 @@ export default function TicketsPage() {
     try {
       // Query existing tickets to find the highest number
       const ticketSnap = await getDocs(collection(db, "tickets"));
-      let nextNumber = 1;
+      let nextNumber = 1001;
 
       if (!ticketSnap.empty) {
-        // Extract the numbers (e.g., "0512" from "TK0512") and find the max
         const existingNumbers = ticketSnap.docs.map(d => {
-          const numStr = d.data().number?.replace("TK", "") || "0";
-          return parseInt(numStr, 10) || 0;
+          const val = d.data().number;
+          if (typeof val === 'number') return val;
+          if (typeof val === 'string') {
+            const parsed = parseInt(val.replace(/\D/g, ''), 10);
+            return isNaN(parsed) ? 0 : parsed;
+          }
+          return 0;
         });
 
         const maxNumber = Math.max(...existingNumbers, 0);
-        nextNumber = maxNumber + 1;
+        if (maxNumber >= 1000) {
+          nextNumber = maxNumber + 1;
+        }
       }
 
-      // Format it beautifully like TK0001, TK0002, etc.
-      const paddedNumber = nextNumber.toString().padStart(4, '0');
-      setTicketNumber(`TK${paddedNumber}`);
+      setTicketNumber(nextNumber);
       
       // Clear out the form fields for a fresh slate
       setRequest("");
@@ -156,7 +161,7 @@ export default function TicketsPage() {
       key: "number",
       render: (item: Ticket) => (
         <span className="font-semibold text-blue-600">
-          {item.number || '---'}
+          {formatEntityNumber(item.number, 'TK')}
         </span>
       )
     },
@@ -241,8 +246,8 @@ export default function TicketsPage() {
                 <input 
                   type="text" 
                   readOnly
-                  value={ticketNumber}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed" 
+                  value={formatEntityNumber(ticketNumber, 'TK')}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed"
                 />
               </div>
 

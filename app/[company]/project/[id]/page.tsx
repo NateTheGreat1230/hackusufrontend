@@ -18,6 +18,7 @@ import { ManufacturingManager } from "@/components/project/ManufacturingManager"
 import { AssigneeSelector } from "@/components/AssigneeSelector";
 import { useBreadcrumbs } from "@/lib/breadcrumb-context";
 import { useDialog } from "@/lib/dialog-context";
+import { formatEntityNumber } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +60,7 @@ export default function ProjectPage({
         const data = snap.data();
         setProjectData(data);
         if (data.number) {
-           setCustomTitle(String(data.number));
+           setCustomTitle(formatEntityNumber(data.number, 'PROJ'));
         } else {
            setCustomTitle(id);
         }
@@ -180,7 +181,7 @@ export default function ProjectPage({
                               company: doc(db, "companies", company),
                               project: doc(db, "projects", id),
                               product_ref: productRef,
-                              product_name: prodData.name || `MO-${newNumber}`,
+                              product_name: prodData.name || formatEntityNumber(newNumber, 'MO'),
                               status: "not_started",
                               start_date: serverTimestamp(),
                               steps: formattedSteps,
@@ -309,7 +310,7 @@ export default function ProjectPage({
     const entryData: any = {
       company: doc(db, "companies", company),
       generated_by: newProjectRef,
-      note: `Project was duplicated from ${projectData.number || id}.`,
+      note: `Project was duplicated from ${formatEntityNumber(projectData.number, 'PROJ')}.`,
       time_created: serverTimestamp(),
       time_updated: serverTimestamp(),
       timeline: newTimelineRef,
@@ -340,7 +341,7 @@ export default function ProjectPage({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-3">
-                {projectData.number ? projectData.number : projectData.id}
+                {projectData.number ? formatEntityNumber(projectData.number, 'PROJ') : projectData.id}
               </h1>
               <AssigneeSelector 
                 company={company} 

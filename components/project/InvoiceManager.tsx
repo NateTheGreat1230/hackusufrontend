@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Plus, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useDialog } from "@/lib/dialog-context";
+import { formatEntityNumber } from "@/lib/utils";
 
 interface InvoiceManagerProps {
   companyId: string;
@@ -120,7 +121,7 @@ export function InvoiceManager({ companyId, projectId, projectData, logEvent }: 
                 onClick={() => router.push(`/${companyId}/invoice/${inv.id}`)}
               >
                 <div className="flex flex-col">
-                  <span className="font-medium">{inv.number ? `INV${inv.number}` : (inv.invoice_number ? inv.invoice_number : `INV${inv.id.toUpperCase().slice(0, 8)}`)} - ${inv.amount?.toFixed(2)}</span>
+                  <span className="font-medium">{inv.number ? formatEntityNumber(inv.number, 'INV') : (inv.invoice_number ? inv.invoice_number : `INV${inv.id.toUpperCase().slice(0, 8)}`)} - ${inv.amount?.toFixed(2)}</span>
                   <span className="text-xs text-muted-foreground">
                      {new Date(inv.time_created?.toMillis?.() || Date.now()).toLocaleDateString()} &middot; {inv.status || 'open'}
                   </span>

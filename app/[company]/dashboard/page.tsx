@@ -7,6 +7,7 @@ import { collection, onSnapshot, query, where, doc, orderBy, limit } from "fireb
 import { Loader2, Ticket, Building2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { DataTable } from "@/components/DataTable";
+import { formatEntityNumber } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -96,7 +97,7 @@ export default function DashboardPage() {
       key: "number",
       render: (item: any) => (
         <span className="font-semibold text-blue-600">
-          {item.number ? item.number : item.id.substring(0,6)}
+          {item.number ? formatEntityNumber(item.number, 'TK') : item.id.substring(0,6)}
         </span>
       )
     },
@@ -118,7 +119,7 @@ export default function DashboardPage() {
       key: "number",
       render: (item: any) => (
         <span className="font-semibold text-blue-600">
-          {item.number ? item.number : item.id.substring(0,6)}
+          {item.number ? formatEntityNumber(item.number, 'PROJ') : item.id.substring(0,6)}
         </span>
       )
     },

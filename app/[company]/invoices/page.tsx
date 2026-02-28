@@ -19,13 +19,14 @@ import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Invoice } from "@/types";
 import { useDialog } from "@/lib/dialog-context";
+import { formatEntityNumber } from "@/lib/utils";
 
 // Helper to safely get an ID from a Firestore Reference
 const getRefId = (ref: any) => (ref?.id ? ref.id : "");
 
 const initialFormState = {
   id: "",
-  number: "", 
+  number: "" as string | number, 
   amount: 0,
   amount_due: 0,
   companyId: "",
@@ -110,17 +111,18 @@ const InvoiceManager = () => {
         });
 
         const maxNumber = Math.max(...existingNumbers, 0);
-        if (maxNumber > 0) {
+        if (maxNumber >= 1000) {
           nextNumber = maxNumber + 1;
+        } else if (maxNumber > 0 && maxNumber < 1000) {
+            nextNumber = 1000 + maxNumber + 1;
+        } else {
+            nextNumber = 1001;
         }
       }
 
-      // Format it beautifully like INV0001, INV0002, etc.
-      const paddedNumber = nextNumber.toString().padStart(4, '0');
-      
       setFormData({
         ...initialFormState,
-        number: `INV${paddedNumber}`
+        number: nextNumber
       });
       setIsFormModalOpen(true);
     } catch (error) {
@@ -196,7 +198,7 @@ const InvoiceManager = () => {
       key: "number",
       render: (item: any) => (
         <div className="py-2">
-          <p className="font-semibold text-slate-900">{item.number || item.id}</p>
+          <p className="font-semibold text-slate-900">{item.number ? formatEntityNumber(item.number, 'INV') : item.id}</p>
         </div>
       )
     },
@@ -312,8 +314,8 @@ const InvoiceManager = () => {
                     type="text" 
                     readOnly
                     name="number" 
-                    value={formData.number} 
-                    className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed" 
+                    value={formData.number ? formatEntityNumber(formData.number, 'INV') : ""} 
+                    className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed"
                   />
                 </div>
 
