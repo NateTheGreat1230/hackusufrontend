@@ -48,7 +48,7 @@ export function MainSidebar({ company }: { company: string }) {
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild tooltip={item.title} className={state === "collapsed" ? "justify-center" : ""}>
                   <Link href={item.url}>
                     <item.icon />
                     {state === "expanded" && (
@@ -65,7 +65,7 @@ export function MainSidebar({ company }: { company: string }) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton asChild tooltip="Settings" className={state === "collapsed" ? "justify-center" : ""}>
               <Link href="/settings">
                 <Settings />
                 {state === "expanded" && <span>Settings</span>}

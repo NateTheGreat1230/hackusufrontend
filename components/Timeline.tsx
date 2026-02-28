@@ -30,6 +30,8 @@ interface TimelineEntry {
   time_updated: Timestamp;
   timeline: DocumentReference;
   type: string;
+  is_customer?: boolean;
+  is_public?: boolean;
 }
 
 interface TimelineProps {
@@ -37,6 +39,7 @@ interface TimelineProps {
   companyId: string;
   generatedById: string; // The ID of the project or ticket the user is currently on
   generatedByType: 'projects' | 'tickets'; // The collection to create the reference in
+  isCustomerView?: boolean;
 }
 
 interface TimelineItemProps {
@@ -89,6 +92,8 @@ function TimelineItem({ entry }: TimelineItemProps) {
             const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(" ");
             setUserLabel(fullName || userData.email || 'Unknown User');
           }
+        } else if (entry.is_customer) {
+          setUserLabel("Customer");
         }
       } catch (err) {
         console.error("Error fetching event generator context:", err);
@@ -152,10 +157,11 @@ function TimelineItem({ entry }: TimelineItemProps) {
   );
 }
 
-export default function Timeline({ timelineId, companyId, generatedById, generatedByType }: TimelineProps) {
+export default function Timeline({ timelineId, companyId, generatedById, generatedByType, isCustomerView }: TimelineProps) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [newNote, setNewNote] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -174,10 +180,21 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
         );
 
         unsubscribeEvents = onSnapshot(qEntries, (snapshot) => {
-          const eventsData = snapshot.docs.map(docSnap => ({
+          let eventsData = snapshot.docs.map(docSnap => ({
             id: docSnap.id,
             ...docSnap.data()
           })) as TimelineEntry[];
+          
+          if (isCustomerView) {
+            eventsData = eventsData.filter(e => 
+              e.is_public === true || 
+              e.type === 'status_update' || 
+              e.type === 'approval' || 
+              e.type === 'rejection' ||
+              e.is_customer === true
+            );
+          }
+          
           setEntries(eventsData);
           setLoading(false);
         });
@@ -218,11 +235,14 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
         time_created: serverTimestamp(),
         time_updated: serverTimestamp(),
         timeline: timelineRef,
-        type: "note"
+        type: "note",
+        is_public: isCustomerView ? true : isPublic
       };
 
       if (user) {
         entryData.user = doc(db, "users", user.uid);
+      } else if (isCustomerView) {
+        entryData.is_customer = true;
       }
 
       await addDoc(collection(db, "timeline_entries"), entryData);
@@ -259,17 +279,30 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
       </div>
 
       <div className="p-4 border-t bg-muted/10">
-        <form onSubmit={handleAddNote} className="flex items-center gap-3">
-          <Input 
-            placeholder="Add a note..." 
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            className="flex-1 bg-background"
-          />
-          <Button type="submit" disabled={!newNote.trim() || !timelineId}>
-            <Send className="w-4 h-4 mr-2" />
-            Add Note
-          </Button>
+        <form onSubmit={handleAddNote} className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Input 
+              placeholder="Add a note..." 
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              className="flex-1 bg-background"
+            />
+            <Button type="submit" disabled={!newNote.trim() || !timelineId}>
+              <Send className="w-4 h-4 mr-2" />
+              Add Note
+            </Button>
+          </div>
+          {!isCustomerView && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground w-fit cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={isPublic} 
+                onChange={(e) => setIsPublic(e.target.checked)} 
+                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              />
+              Make visible to customer
+            </label>
+          )}
         </form>
       </div>
     </div>
