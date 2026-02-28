@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useBreadcrumbs } from "@/lib/breadcrumb-context";
+import { ProductManufacturingManager } from "@/components/product/ProductManufacturingManager";
 
 export default function ProductPage({
   params,
@@ -318,6 +319,10 @@ export default function ProductPage({
                 )}
               </CardContent>
             </Card>
+
+            <div className="md:col-span-2">
+               <ProductManufacturingManager product={productData} companyId={company} />
+            </div>
 
           </div>
         </div>

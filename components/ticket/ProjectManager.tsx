@@ -59,7 +59,7 @@ export function ProjectManager({ companyId, ticketId, ticketData, logEvent }: Pr
     });
 
     if (logEvent) {
-      await logEvent(`User created Project ${newProjectNumber}.`, "project_created");
+      await logEvent(`Created Project ${newProjectNumber}.`, "project_created");
     }
 
     router.push(`/${companyId}/project/${newProjectRef.id}`);

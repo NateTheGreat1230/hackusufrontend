@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Plus, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/lib/dialog-context";
 
 interface InvoiceManagerProps {
   companyId: string;
@@ -16,6 +17,7 @@ interface InvoiceManagerProps {
 export function InvoiceManager({ companyId, projectId, projectData, logEvent }: InvoiceManagerProps) {
   const router = useRouter();
   const [invoices, setInvoices] = useState<any[]>([]);
+  const { alert } = useDialog();
 
   useEffect(() => {
     if (!projectId) return;
@@ -57,7 +59,7 @@ export function InvoiceManager({ companyId, projectId, projectData, logEvent }: 
     const uninvoicedItems = allProjectItems.filter(item => !invoicedItems.has(item.id));
 
     if (uninvoicedItems.length === 0) {
-      alert("All current items have already been invoiced.");
+      await alert("All current items have already been invoiced.");
       return;
     }
 
@@ -88,7 +90,7 @@ export function InvoiceManager({ companyId, projectId, projectData, logEvent }: 
     });
 
     if (logEvent) {
-      await logEvent(`User generated Invoice for $${totalAmount.toFixed(2)}.`, "invoice_created");
+      await logEvent(`Generated Invoice for $${totalAmount.toFixed(2)}.`, "invoice_created");
     }
 
     router.push(`/${companyId}/invoice/${invoiceRef.id}`);

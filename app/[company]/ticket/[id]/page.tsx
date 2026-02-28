@@ -16,6 +16,7 @@ import { CustomerDetailsBox } from "@/components/customer/CustomerDetailsBox";
 import { ProjectManager } from "@/components/ticket/ProjectManager";
 import { AssigneeSelector } from "@/components/AssigneeSelector";
 import { useBreadcrumbs } from "@/lib/breadcrumb-context";
+import { useDialog } from "@/lib/dialog-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,7 @@ export default function TicketPage({
   const router = useRouter();
   const { user } = useAuth();
   const { setCustomTitle } = useBreadcrumbs();
+  const { confirm } = useDialog();
 
   const [ticketData, setTicketData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
@@ -135,14 +137,14 @@ export default function TicketPage({
   };
 
   // Status Handlers
-  const hasConfirmedProject = projects.some(p => p.status === 'open' || p.status === 'completed');
+  
   const baseStatus = ticketData.status?.toLowerCase() || 'open';
-  const displayStatus = hasConfirmedProject ? 'Won' : (baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1));
+  
 
   const handleUpdateStatus = async (newStatus: string) => {
     if (newStatus === baseStatus) return;
     await updateDoc(ticketRef, { status: newStatus });
-    await logEvent(`User changed ticket status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update");
+    await logEvent(`Changed ticket status (${baseStatus.charAt(0).toUpperCase() + baseStatus.slice(1)} -> ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)})`, "status_update");
   };
 
   // Request Handlers
@@ -158,14 +160,14 @@ export default function TicketPage({
       return;
     }
     await updateDoc(ticketRef, { request: editedRequest });
-    await logEvent(`User updated the request details`, "request_update");
+    await logEvent(`Updated the request details`, "request_update");
     setIsEditingRequest(false);
   };
 
   // Customer Handlers
   const handleSelectNewCustomer = async (customerId: string, customerName?: string) => {
     await updateDoc(ticketRef, { customer: doc(db, "customers", customerId) });
-    await logEvent(`User changed linked customer to ${customerName || 'a new customer'}`, "customer_update");
+    await logEvent(`Changed linked customer to ${customerName || 'a new customer'}`, "customer_update");
     setIsCustomerDialogOpen(false);
     setCustomerSearch("");
   };
@@ -241,7 +243,7 @@ export default function TicketPage({
   };
 
   const handleDeleteTicket = async () => {
-    if (confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
+    if (await confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
       await deleteDoc(ticketRef);
       router.push(`/${company}/tickets`);
     }
@@ -256,10 +258,9 @@ export default function TicketPage({
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">
+              <h1 className="text-3xl font-bold tracking-tight mb-3">
                 {ticketData.number ? ticketData.number : id}
               </h1>
-              <p className="text-muted-foreground mt-1 mb-3">Lead & Request details</p>
               <AssigneeSelector 
                 company={company} 
                 docRef={ticketRef} 
@@ -268,13 +269,7 @@ export default function TicketPage({
               />
             </div>
             
-            {hasConfirmedProject ? (
-              <Badge variant="default" className="text-sm px-3 py-1 rounded-full cursor-pointer">
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Won
-              </Badge>
-            ) : (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="text-sm px-3 py-1 h-auto rounded-full cursor-pointer" size="sm">
@@ -313,7 +308,6 @@ export default function TicketPage({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

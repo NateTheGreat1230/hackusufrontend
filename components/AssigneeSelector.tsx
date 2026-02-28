@@ -64,7 +64,7 @@ export function AssigneeSelector({ company, docRef, currentAssignees = [], logEv
     await updateDoc(docRef, {
       assigned_users: arrayUnion(userRef)
     });
-    await logEvent(`Assigned user ${user.first_name || user.email || userId} to this item.`, "user_assigned");
+    await logEvent(`Assigned ${user.first_name || user.email || userId} to this item.`, "user_assigned");
   };
 
   const handleRemove = async (userRef: any, userId: string) => {
@@ -72,7 +72,7 @@ export function AssigneeSelector({ company, docRef, currentAssignees = [], logEv
     await updateDoc(docRef, {
       assigned_users: arrayRemove(userRef)
     });
-    await logEvent(`Removed user ${user?.first_name || user?.email || userId} from this item.`, "user_removed");
+    await logEvent(`Removed ${user?.first_name || user?.email || userId} from this item.`, "user_removed");
   };
 
   const unassignedUsers = users.filter(u => !assigneeData.some(a => a.id === u.id));
