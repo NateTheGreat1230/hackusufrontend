@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useBreadcrumbs } from "@/lib/breadcrumb-context";
 
 export default function CustomerPage({
   params,
@@ -17,6 +18,7 @@ export default function CustomerPage({
 }) {
   const { company, id } = use(params);
   const router = useRouter();
+  const { setCustomTitle } = useBreadcrumbs();
 
   const [customerData, setCustomerData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +30,16 @@ export default function CustomerPage({
     if (!id) return;
     const unsub = onSnapshot(doc(db, "customers", id), (docSnap) => {
       if (docSnap.exists()) {
-        const data = { id: docSnap.id, ...docSnap.data() };
+        const data = { id: docSnap.id, ...(docSnap.data() as any) };
         setCustomerData(data);
+        
+        let customName = "Unknown Customer";
+        if (data.first_name || data.last_name) {
+          customName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
+        } else if (data.company_name) {
+          customName = data.company_name;
+        }
+        setCustomTitle(customName);
       } else {
         setCustomerData(null);
       }
@@ -37,7 +47,7 @@ export default function CustomerPage({
     });
 
     return () => unsub();
-  }, [id]);
+  }, [id, setCustomTitle]);
 
   const handleEditClick = () => {
     setEditForm({

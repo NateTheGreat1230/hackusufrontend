@@ -14,6 +14,7 @@ import { CustomerDetailsBox } from "@/components/customer/CustomerDetailsBox";
 import { LineItemsManager } from "@/components/project/LineItemsManager";
 import { InvoiceManager } from "@/components/project/InvoiceManager";
 import { AssigneeSelector } from "@/components/AssigneeSelector";
+import { useBreadcrumbs } from "@/lib/breadcrumb-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,7 @@ export default function ProjectPage({
   const { company, id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
+  const { setCustomTitle } = useBreadcrumbs();
 
   const [projectData, setProjectData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
@@ -50,12 +52,18 @@ export default function ProjectPage({
     const projectRef = doc(db, "projects", id);
     const unsubscribe = onSnapshot(projectRef, (snap: any) => {
       if (snap.exists()) {
-        setProjectData(snap.data());
+        const data = snap.data();
+        setProjectData(data);
+        if (data.number) {
+           setCustomTitle(String(data.number));
+        } else {
+           setCustomTitle(id);
+        }
       }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [id]);
+  }, [id, setCustomTitle]);
 
   // Listen to Customer
   useEffect(() => {
@@ -316,7 +324,7 @@ export default function ProjectPage({
 
             {/* Basic Info Card */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b mb-4">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 mb-1">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <FileText className="w-5 h-5" /> Project Information
                 </CardTitle>
@@ -339,7 +347,7 @@ export default function ProjectPage({
               </CardHeader>
               <CardContent className="mt-2">
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 flex-wrap pb-4 border-b">
+                  <div className="flex items-center gap-2 flex-wrap pb-4">
                     <Button 
                       size="sm"
                       variant={projectData.approved ? "default" : "outline"} 
@@ -348,7 +356,7 @@ export default function ProjectPage({
                         await updateDoc(doc(db, "projects", id), { approved: true, rejected: false });
                         await logEvent("Technician manually marked proposal as Approved.", "approval", true);
                       }}>
-                      Approve
+                      Approved
                     </Button>
                     <Button 
                       size="sm"
@@ -368,7 +376,7 @@ export default function ProjectPage({
                         await updateDoc(doc(db, "projects", id), { approved: false, rejected: true });
                         await logEvent("Technician manually marked proposal as Rejected.", "rejection", true);
                       }}>
-                      Reject
+                      Rejected
                     </Button>
                   </div>
                   

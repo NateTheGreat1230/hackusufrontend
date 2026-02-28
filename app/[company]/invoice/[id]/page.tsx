@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { useBreadcrumbs } from "@/lib/breadcrumb-context";
 import {
   Table,
   TableBody,
@@ -27,6 +28,7 @@ export default function InvoicePage({
   const company = resolvedParams.company;
   const id = resolvedParams.id;
   const router = useRouter();
+  const { setCustomTitle } = useBreadcrumbs();
 
   const [invoice, setInvoice] = useState<any>(null);
   const [lineItems, setLineItems] = useState<any[]>([]);
@@ -45,6 +47,14 @@ export default function InvoicePage({
       if (docSnap.exists()) {
         const data = docSnap.data();
         setInvoice({ id: docSnap.id, ...data });
+        
+        if (data.invoice_number) {
+          setCustomTitle(String(data.invoice_number));
+        } else if (data.number) {
+          setCustomTitle('INV' + String(data.number));
+        } else {
+          setCustomTitle(id.toUpperCase().slice(0, 8));
+        }
         
         // Pre-fill payment amount when invoice loads
         setPaymentAmount(data.amount_due?.toFixed(2) || "0.00");
@@ -98,7 +108,7 @@ export default function InvoicePage({
       setIsLoading(false);
     });
     return () => unsub();
-  }, [id]);
+  }, [id, setCustomTitle]);
 
   // --- NEW: Verify Stripe Payment on Return ---
   useEffect(() => {

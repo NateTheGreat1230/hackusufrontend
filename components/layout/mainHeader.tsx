@@ -9,38 +9,44 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import Link from "next/link"
 
-import { Bell, User, ChevronDown } from "lucide-react"
+import { Bell, User, ChevronDown, ChevronRight } from "lucide-react"
 import { usePathname } from "next/navigation"
 
-// 1. IMPORT YOUR NEW COMPONENT HERE (Adjust the path if needed)
 import { GlobalSearch } from "./globalSearch" 
+import { useBreadcrumbs } from "@/lib/breadcrumb-context"
 
 export function MainHeader({ company }: { company: string }) {
-  const pathname = usePathname()
-
-  function getTitle() {
-    if (pathname === `/${company}/dashboard`) return "Dashboard"
-    if (pathname === `/${company}/projects`) return "Projects"
-    if (pathname === `/${company}/analytics`) return "Analytics"
-    if (pathname === `/${company}/customers`) return "Customers"
-    if (pathname === `/${company}/tickets`) return "Tickets"
-    if (pathname === `/${company}/products`) return "Products"
-    if (pathname === `/${company}/invoices`) return "Invoices"
-    if (pathname === `/${company}/settings`) return "Company Settings"
-    if (pathname === `/${company}/profile`) return "User Profile"
-    return "My App"
-  }
+  const { trail } = useBreadcrumbs()
 
   return (
     <header className="h-14 border-b flex items-center px-4 justify-between gap-4">
       
-      {/* LEFT SIDE - Added flex-1 so it takes up equal space */}
-      <div className="flex items-center gap-4 flex-1">
+      {/* LEFT SIDE */}
+      <div className="flex items-center gap-4 flex-1 overflow-hidden">
         <SidebarTrigger />
-        <h1 className="text-lg font-semibold whitespace-nowrap">
-          {getTitle()}
-        </h1>
+        <div className="flex items-center text-sm ml-2 overflow-hidden whitespace-nowrap">
+          {trail && trail.length > 0 ? (
+            trail.map((item, index) => {
+              const isLast = index === trail.length - 1
+              return (
+                <div key={item.url} className="flex items-center">
+                  {index > 0 && <ChevronRight className="w-4 h-4 mx-1 md:mx-2 text-muted-foreground flex-shrink-0" />}
+                  <Link 
+                    href={item.url}
+                    className={`hover:underline truncate max-w-[120px] sm:max-w-[200px] ${isLast ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                    title={item.title}
+                  >
+                    {item.title}
+                  </Link>
+                </div>
+              )
+            })
+          ) : (
+             <span className="font-semibold text-foreground">My App</span>
+          )}
+        </div>
       </div>
 
       {/* CENTER - THE SEARCH BAR */}
@@ -48,7 +54,7 @@ export function MainHeader({ company }: { company: string }) {
         <GlobalSearch />
       </div>
 
-      {/* RIGHT SIDE - Added flex-1 and justify-end to balance the left side */}
+      {/* RIGHT SIDE */}
       <div className="flex items-center gap-3 flex-1 justify-end">
         <Button variant="ghost" size="icon">
           <Bell className="h-5 w-5" />
