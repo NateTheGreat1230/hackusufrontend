@@ -38,7 +38,8 @@ export async function POST(req: Request) {
         amountPaid: amount.toString()
       },
       // Where to send them after they pay (or if they click back)
-      success_url: `${currentUrl}?payment=success`,
+// Notice the ?session_id={CHECKOUT_SESSION_ID} at the end!
+      success_url: `${currentUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${currentUrl}?payment=cancelled`,
     });
 
