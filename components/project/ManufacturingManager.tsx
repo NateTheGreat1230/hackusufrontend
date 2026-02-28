@@ -91,6 +91,27 @@ export function ManufacturingManager({ companyId, projectId }: ManufacturingMana
                 newNumber = (data.last_number || 1000) + 1;
             }
 
+            let stepsToUse: any[] = [];
+            let bomToUse: any[] = [];
+            let productRefStr = selectedProductTemplate && selectedProductTemplate !== 'none' ? selectedProductTemplate : null;
+            let productRefObj = productRefStr ? doc(db, "products", productRefStr) : null;
+            
+            if (productRefObj) {
+                const prodSnap = await transaction.get(productRefObj);
+                if (prodSnap.exists()) {
+                    const prodData = prodSnap.data();
+                    stepsToUse = prodData.manufacturing_steps || [];
+                    bomToUse = prodData.bom || [];
+                }
+            }
+
+            const formattedSteps = stepsToUse.map((s: any, idx: number) => ({
+                id: `step-${Date.now()}-${idx}`,
+                description: s.description || s,
+                is_completed: false,
+                notes: ""
+            }));
+
             transaction.set(counterRef, { last_number: newNumber }, { merge: true });
 
             const newOrderRef = doc(collection(db, "manufacturing_orders"));
@@ -98,10 +119,13 @@ export function ManufacturingManager({ companyId, projectId }: ManufacturingMana
             transaction.set(newOrderRef, {
                 number: newNumber,
                 project: doc(db, "projects", projectId),
-                product_ref: selectedProductTemplate && selectedProductTemplate !== 'none' ? doc(db, "products", selectedProductTemplate) : null,
+                product_ref: productRefObj,
                 product_name: productName,
                 status: "not_started",
-                steps: [],
+                start_date: serverTimestamp(),
+                steps: formattedSteps,
+                bom: bomToUse,
+                qty: 1,
                 time_created: serverTimestamp(),
                 time_updated: serverTimestamp(),
                 company: doc(db, "companies", companyId)
