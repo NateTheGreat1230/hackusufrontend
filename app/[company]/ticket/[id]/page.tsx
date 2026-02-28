@@ -9,9 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, CircleDashed, Pen, Plus, Check, X, MoreHorizontal, Copy, Trash, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CustomerDetailsBox } from "@/components/customer/CustomerDetailsBox";
+import { ProjectManager } from "@/components/ticket/ProjectManager";
+import { AssigneeSelector } from "@/components/AssigneeSelector";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +29,7 @@ export default function TicketPage({
 }) {
   const { company, id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
 
   const [ticketData, setTicketData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
@@ -106,7 +110,8 @@ export default function TicketPage({
   const logEvent = async (note: string, type: string = "system_event") => {
     if (!ticketData?.timeline) return;
     const timelineRef = typeof ticketData.timeline === 'string' ? doc(db, ticketData.timeline) : ticketData.timeline;
-    await addDoc(collection(db, "timeline_entries"), {
+    
+    const entryData: any = {
       company: doc(db, "companies", company),
       generated_by: ticketRef,
       note,
@@ -114,7 +119,11 @@ export default function TicketPage({
       timeline: timelineRef,
       time_created: serverTimestamp(),
       time_updated: serverTimestamp(),
-    });
+    };
+    if (user) {
+      entryData.user = doc(db, "users", user.uid);
+    }
+    await addDoc(collection(db, "timeline_entries"), entryData);
   };
 
   // Status Handlers
@@ -186,45 +195,6 @@ export default function TicketPage({
     setNewCustomerForm({ first_name: "", last_name: "", email: "", phone: "" });
   };
 
-  // Project Handlers
-  const handleCreateProject = async () => {
-    // Generate sequential number based on project count
-    const qProjectsCount = query(collection(db, "projects"), where("company", "==", doc(db, "companies", company)));
-    const snapshot = await getCountFromServer(qProjectsCount);
-    const count = snapshot.data().count;
-    const projectNumber = `PROJ${1000 + count + 1}`;
-
-    await addDoc(collection(db, "projects"), {
-      amount: 0,
-      amount_due: 0,
-      company: doc(db, "companies", company),
-      customer: ticketData.customer || null,
-      invoices: [],
-      line_items: [],
-      number: projectNumber,
-      status: "draft",
-      ticket: ticketRef,
-      time_created: serverTimestamp(),
-      time_updated: serverTimestamp(),
-      timeline: ticketData.timeline || null,
-    });
-
-    if (ticketData.timeline) {
-      const timelineRef = typeof ticketData.timeline === 'string' 
-        ? doc(db, ticketData.timeline) 
-        : (ticketData.timeline.path ? ticketData.timeline : doc(db, "timelines", ticketData.timeline.id || ticketData.timeline));
-      await addDoc(collection(db, "timeline_entries"), {
-        company: doc(db, "companies", company),
-        generated_by: ticketRef,
-        note: `Project ${projectNumber} was generated from this ticket.`,
-        time_created: serverTimestamp(),
-        time_updated: serverTimestamp(),
-        timeline: timelineRef,
-        type: "project_creation"
-      });
-    }
-  };
-
   const handleDuplicateTicket = async () => {
     const qTicketsCount = query(collection(db, "tickets"), where("company", "==", doc(db, "companies", company)));
     const snapshot = await getCountFromServer(qTicketsCount);
@@ -245,7 +215,7 @@ export default function TicketPage({
       time_updated: serverTimestamp(),
     });
 
-    await addDoc(collection(db, "timeline_entries"), {
+    const entryData: any = {
       company: doc(db, "companies", company),
       generated_by: newTicketRef,
       note: `Ticket was duplicated from ticket #${ticketData.number || id}.`,
@@ -253,7 +223,11 @@ export default function TicketPage({
       time_updated: serverTimestamp(),
       timeline: newTimelineRef,
       type: "ticket_creation",
-    });
+    };
+    if (user) {
+      entryData.user = doc(db, "users", user.uid);
+    }
+    await addDoc(collection(db, "timeline_entries"), entryData);
 
     router.push(`/${company}/ticket/${newTicketRef.id}`);
   };
@@ -275,9 +249,15 @@ export default function TicketPage({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
-                Ticket {ticketData.number ? `#${ticketData.number}` : id}
+                Ticket {ticketData.number ? `TK${ticketData.number}` : id}
               </h1>
-              <p className="text-muted-foreground mt-1">Lead & Request details</p>
+              <p className="text-muted-foreground mt-1 mb-3">Lead & Request details</p>
+              <AssigneeSelector 
+                company={company} 
+                docRef={ticketRef} 
+                currentAssignees={ticketData.assigned_users || []} 
+                logEvent={logEvent} 
+              />
             </div>
             
             {hasConfirmedProject ? (
@@ -393,49 +373,8 @@ export default function TicketPage({
 
         {/* Associated Projects Card */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">Associated Projects & Quotes</h2>
-              <p className="text-sm text-muted-foreground">Projects created from this lead.</p>
-            </div>
-            <Button size="sm" onClick={handleCreateProject} className="cursor-pointer">
-              <Plus className="w-4 h-4 mr-2" /> New Project
-            </Button>
-          </div>
-          
-          {projects.length > 0 ? (
-              <div className="grid gap-4">
-                {projects.map((project) => (
-                  <Link href={`/${company}/project/${project.id}`} key={project.id}>
-                    <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                      <CardContent className="p-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-lg font-semibold text-primary">
-                              {project.number ? `Project #${project.number}` : project.title || 'Untitled Project'}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Created on {project.time_created ? new Date(project.time_created.toDate?.() || project.time_created).toLocaleDateString() : 'Unknown'}
-                            </p>
-                          </div>
-                          <Badge variant={['open', 'completed'].includes(project.status?.toLowerCase()) ? 'default' : 'outline'} className="text-sm px-3 py-1">
-                            {['open', 'completed'].includes(project.status?.toLowerCase()) ? 'Active' : 'Draft'}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
-                  <FileText className="w-10 h-10 mb-3 text-muted/50" />
-                  <p>No projects or quotes have been created for this ticket yet.</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          <ProjectManager companyId={company} ticketId={id} ticketData={ticketData} logEvent={logEvent} />
+        </div>
         </div>
       </div>
 

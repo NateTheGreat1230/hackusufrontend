@@ -40,7 +40,7 @@ export default function ProjectsPage() {
       key: "number",
       render: (item: Project) => (
         <span className="font-semibold text-blue-600">
-          {item.number ? `#${item.number}` : '---'}
+          {item.number || '---'}
         </span>
       )
     },
