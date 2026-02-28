@@ -37,14 +37,13 @@ const initialFormState = {
 const InvoiceManager = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState<any[]>([]);
   const { alert } = useDialog();
+  const router = useRouter();
+  const { company } = useParams();
   
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
-
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // Modal states
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
