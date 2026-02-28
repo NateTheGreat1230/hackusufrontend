@@ -18,7 +18,7 @@ export default async function ProjectPage({
   const timelineId = projectData?.timeline?.id;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-[calc(100vh)] w-full overflow-hidden">
       <div className="flex-1 p-6 overflow-y-auto">
         {/* Main project content will go here */}
         <h1 className="text-2xl font-bold mb-4">Project {id}</h1>

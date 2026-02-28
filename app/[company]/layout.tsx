@@ -1,8 +1,8 @@
 import { MainHeader } from "@/components/layout/mainHeader";
 import { MainSidebar } from "@/components/layout/mainSidebar";
+import { SidebarInset } from "@/components/ui/sidebar";
 
 export default async function InternalLayout({ children, params }: {children: React.ReactNode, params: Promise<{ company:  string}>}) {
-
   const { company } = await params;
 
   return (
