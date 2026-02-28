@@ -4,8 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { 
-  FileText, 
-  Search, 
   ExternalLink,
   Loader2,
   X,
@@ -15,6 +13,11 @@ import {
   Clock
 } from 'lucide-react';
 
+import { useSearchParams } from 'next/navigation';
+
+// 1. IMPORT DataTable and Button
+import { DataTable } from "@/components/DataTable";
+import { Button } from "@/components/ui/button";
 import { Invoice } from "@/types";
 
 // Helper to safely get an ID from a Firestore Reference
@@ -32,8 +35,10 @@ const initialFormState = {
 
 const InvoiceManager = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q")?.toLowerCase() || "";
   
   // Modal states
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -42,7 +47,6 @@ const InvoiceManager = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Sorting by time_created descending puts newest invoices at the top
     const q = query(collection(db, "invoices"), orderBy("time_created", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
@@ -70,7 +74,6 @@ const InvoiceManager = () => {
   };
 
   const openEditModal = (invoice: Invoice) => {
-    // Populate form with existing data, extracting IDs from references
     setFormData({
       id: invoice.id,
       amount: invoice.amount || 0,
@@ -83,7 +86,6 @@ const InvoiceManager = () => {
     setIsFormModalOpen(true);
   };
 
-  // 2. Handle both Add and Edit in one function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -91,7 +93,6 @@ const InvoiceManager = () => {
     try {
       const now = new Date();
       
-      // Prepare the update payload
       const invoiceData: any = {
         amount: Number(formData.amount),
         amount_due: Number(formData.amount_due),
@@ -103,14 +104,12 @@ const InvoiceManager = () => {
       };
 
       if (formData.id) {
-        // Edit existing invoice
         const docRef = doc(db, "invoices", formData.id);
         await updateDoc(docRef, invoiceData);
       } else {
-        // Add new invoice
         invoiceData.time_created = now;
-        invoiceData.line_items = []; // Initialize empty array
-        invoiceData.transactions = []; // Initialize empty array
+        invoiceData.line_items = []; 
+        invoiceData.transactions = []; 
         await addDoc(collection(db, "invoices"), invoiceData);
       }
       
@@ -124,11 +123,78 @@ const InvoiceManager = () => {
     }
   };
 
-  // Search by Invoice ID or Customer ID
-  const filteredInvoices = invoices.filter(inv => 
-    inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getRefId(inv.customer).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredInvoices = invoices.filter((inv) => {
+    if (!searchQuery) return true;
+
+    const searchableMatch = `${inv.id || ''} ${getRefId(inv.customer) || ''}`.toLowerCase();
+    return searchableMatch.includes(searchQuery);
+  });
+
+  // 2. DEFINE COLUMNS FOR DATA TABLE
+  const columns = [
+    {
+      header: "Invoice ID",
+      key: "id",
+      // Match the bold, standard text of the Products page
+      render: (item: Invoice) => (
+        <div className="py-2">
+          <p className="font-semibold">{item.id}</p>
+        </div>
+      )
+    },
+    {
+      header: "Customer Ref",
+      key: "customerRef",
+      // Removed font-mono and text-muted-foreground so it defaults to standard black text
+      className: "py-2 text-sm",
+      render: (item: Invoice) => getRefId(item.customer) || "N/A"
+    },
+    {
+      header: "Amount",
+      key: "amount",
+      className: "py-2 text-sm",
+      render: (item: Invoice) => `$${item.amount?.toFixed(2)}`
+    },
+    {
+      header: "Status",
+      key: "status",
+      className: "py-2",
+      render: (item: Invoice) => <PaymentBadge amountDue={item.amount_due || 0} />
+    },
+    {
+      header: "Actions",
+      key: "actions",
+      className: "py-2 text-right",
+      render: (item: Invoice) => (
+        <div className="flex justify-end gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              openEditModal(item);
+            }}
+          >
+            <Edit size={16} className="mr-1" />
+            Edit
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedInvoice(item);
+            }}
+          >
+            <ExternalLink size={16} className="mr-1" />
+            Details
+          </Button>
+        </div>
+      )
+    }
+  ];
 
   if (loading) {
     return (
@@ -139,93 +205,33 @@ const InvoiceManager = () => {
     );
   }
 
+  // 3. APPLY PRODUCTS PAGE LAYOUT CLASSES
   return (
-    <div className="p-8 max-w-7xl mx-auto text-slate-800">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <FileText className="text-blue-600" />
-            Invoices
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">Manage billing, payments, and client accounts.</p>
-        </div>
-        
-        <button 
-          onClick={openAddModal}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white rounded-lg font-medium shadow-sm flex items-center gap-2"
-        >
-          <Plus size={18} />
-          <span>Create Invoice</span>
-        </button>
-      </div>
+    <div className="flex h-full w-full overflow-hidden bg-muted/10">
+      <div className="flex-1 p-6 overflow-y-auto w-full">
+        <div className="max-w-[98%] mx-auto space-y-4">
+          
+          {/* Action Bar */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">
+              Manage billing, payments, and client accounts.
+            </p>
+            <Button 
+              onClick={openAddModal}
+              className="cursor-pointer shrink-0 ml-4"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              <span>Create Invoice</span>
+            </Button>
+          </div>
 
-      {/* Search Bar */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <input 
-          type="text" 
-          placeholder="Search by Invoice ID or Customer ID..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-        />
-      </div>
-
-      {/* Table Section */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Invoice ID</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Customer Ref</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Amount</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Status</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredInvoices.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
-                    No invoices found.
-                  </td>
-                </tr>
-              ) : (
-                filteredInvoices.map(invoice => (
-                  <tr key={invoice.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 font-mono text-sm text-slate-700">{invoice.id}</td>
-                    <td className="p-4 text-sm font-mono text-slate-500">{getRefId(invoice.customer) || "N/A"}</td>
-                    <td className="p-4 text-sm font-medium text-slate-800">
-                      ${invoice.amount?.toFixed(2)}
-                    </td>
-                    <td className="p-4">
-                      <PaymentBadge amountDue={invoice.amount_due || 0} />
-                    </td>
-                    <td className="p-4 text-right">
-                      <button 
-                        onClick={() => openEditModal(invoice)}
-                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors inline-flex items-center mr-2"
-                        title="Edit Invoice"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => setSelectedInvoice(invoice)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center"
-                        title="View Details"
-                      >
-                        <ExternalLink size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {/* 4. REPLACE RAW TABLE WITH DATATABLE COMPONENT */}
+          <DataTable 
+            columns={columns}
+            data={filteredInvoices} 
+            onRowClick={(item: Invoice) => setSelectedInvoice(item)}
+            emptyMessage={searchQuery ? `No invoices found matching "${searchQuery}".` : "No invoices found."}
+          />
 
       {/* Add / Edit Form Modal */}
       {isFormModalOpen && (
@@ -357,6 +363,8 @@ const InvoiceManager = () => {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

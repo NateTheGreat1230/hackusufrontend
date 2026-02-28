@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, addDoc, doc } from 'firebase/firestore';
 import { 
-  Package, 
   AlertTriangle, 
   ExternalLink,
   Loader2,
@@ -13,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 
 import { DataTable } from "@/components/DataTable";
 import { Product } from "@/types";
@@ -28,6 +27,9 @@ const InventoryManager = () => {
   const params = useParams();
   const company = params.company as string;
   
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q")?.toLowerCase() || "";
+
   const [inventory, setInventory] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -37,7 +39,6 @@ const InventoryManager = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Note: Updated orderby to 'name' to match new schema
     const q = query(collection(db, "products"), orderBy("name", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
@@ -54,13 +55,19 @@ const InventoryManager = () => {
     return () => unsubscribe();
   }, []);
 
-  // Handle Input Changes for the form
+  const filteredInventory = inventory.filter((item) => {
+    if (!searchQuery) return true; 
+
+    const searchString = `${item.name || ''} ${item.model_number || ''} ${item.sku || ''} ${item.category || ''}`.toLowerCase();
+    
+    return searchString.includes(searchQuery);
+  });
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // 2. Submit Logic with References and Timestamps
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -77,21 +84,18 @@ const InventoryManager = () => {
         type: formData.type,
         description: formData.description,
         image: formData.image,
-        // Convert string inputs to numbers
         qty: Number(formData.qty),
         qty_avail: Number(formData.qty_avail),
         price: Number(formData.price),
         cost: Number(formData.cost),
-        // Convert the string ID into an actual Firestore Reference
         company: formData.companyId ? doc(db, 'companies', formData.companyId) : null,
-        product_instances: [], // Start with empty array for a new product
+        product_instances: [], 
         time_created: now,
         time_updated: now
       };
 
       await addDoc(collection(db, "products"), newProductData);
       
-      // Reset and close
       setFormData(initialFormState);
       setIsAddModalOpen(false);
     } catch (error) {
@@ -164,19 +168,15 @@ const InventoryManager = () => {
     <div className="flex h-full w-full overflow-hidden bg-muted/10">
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2 tracking-tight">
-                <Package className="text-blue-600" />
-                Products
-              </h1>
-              <p className="text-muted-foreground mt-1 text-sm">Manage and track your inventory in real-time.</p>
-            </div>
-            
+          
+          {/* Action Bar with Description and Button */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">
+              Manage and track your inventory in real-time.
+            </p>
             <Button 
               onClick={() => setIsAddModalOpen(true)}
-              className="cursor-pointer"
+              className="cursor-pointer shrink-0 ml-4"
             >
               <Plus className="w-4 h-4 mr-2" />
               <span>Add Product</span>
@@ -185,14 +185,12 @@ const InventoryManager = () => {
 
           <DataTable 
             columns={columns}
-            data={inventory}
-            searchPlaceholder="Search by name, model, or SKU..."
-            searchKey={(item: Product) => `${item.name} ${item.model_number} ${item.sku}`}
+            data={filteredInventory} 
             onRowClick={(item: Product) => router.push(`/${company}/product/${item.id}`)}
-            emptyMessage="No products found matching your search."
+            emptyMessage={searchQuery ? `No products found matching "${searchQuery}".` : "No products available."}
           />
 
-      {/* 3. NEW Add Product Modal */}
+      {/* Add Product Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 animate-in fade-in zoom-in-95 duration-200">
