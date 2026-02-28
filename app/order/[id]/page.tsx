@@ -147,8 +147,17 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     await updateDoc(doc(db, "projects", id), {
       approved: true,
       rejected: false,
+      status: "open"
     });
-    await logEvent("Customer approved the order proposal.", "approval");
+    
+    if (projectData.ticket) {
+      const ticketRef = typeof projectData.ticket === 'string' 
+        ? doc(db, projectData.ticket) 
+        : doc(db, "tickets", projectData.ticket.id);
+      await updateDoc(ticketRef, { status: "complete" });
+    }
+
+    await logEvent("Approved the order proposal.", "approval");
   };
 
   const handleReject = async () => {
@@ -157,7 +166,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       approved: false,
       rejected: true,
     });
-    await logEvent("Customer rejected the order proposal.", "rejection");
+    await logEvent("Rejected the order proposal.", "rejection");
   };
 
   if (loading) return <div className="p-8 max-w-4xl mx-auto flex items-center justify-center h-screen">Loading order details...</div>;

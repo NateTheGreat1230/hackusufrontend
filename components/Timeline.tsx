@@ -75,7 +75,7 @@ function TimelineItem({ entry }: TimelineItemProps) {
             setGeneratorLabel(`${data.number || '??'}`);
           } else if (docPath.includes("users/")) {
             const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ");
-            setGeneratorLabel(`User ${fullName || data.email || '??'}`);
+            setGeneratorLabel(`${fullName || data.email || '??'}`);
           } else {
             setGeneratorLabel(`Company Data`);
           }
@@ -119,7 +119,11 @@ function TimelineItem({ entry }: TimelineItemProps) {
       <div className="flex flex-col gap-2">
         {/* Event Header: generated_by tag & Timestamp */}
         <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-muted px-2.5 py-0.5 rounded-full w-max">
+          <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full w-max ${
+            entry.is_public 
+              ? "bg-slate-800 text-slate-100 border border-slate-700" 
+              : "text-muted-foreground bg-muted"
+          }`}>
             <GeneratorIcon className="w-3.5 h-3.5" />
             {loadingContext ? "Loading..." : generatorLabel}
           </div>
@@ -164,6 +168,7 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
   const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Subscribe to the timeline's entries
   useEffect(() => {
@@ -212,11 +217,30 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
     };
   }, [timelineId]);
 
-  // Auto-scroll to bottom when entries change or load
+  // Auto-scroll to bottom using Mutation Observer to catch all layout shifts
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+
+    const scrollToBottom = () => {
+      scroller.scrollTop = scroller.scrollHeight;
+    };
+
+    // Initial scroll
+    scrollToBottom();
+
+    // Observe size changes of the content (e.g. from async renders)
+    const resizeObserver = new ResizeObserver(() => {
+      scrollToBottom();
+    });
+    
+    if (scroller.firstElementChild) {
+      resizeObserver.observe(scroller.firstElementChild);
+    } else {
+      resizeObserver.observe(scroller);
     }
+
+    return () => resizeObserver.disconnect();
   }, [entries]);
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -274,6 +298,7 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
             {entries.map((entry) => (
               <TimelineItem key={entry.id} entry={entry} />
             ))}
+            <div ref={bottomRef} style={{ height: 1 }} />
           </div>
         )}
       </div>
