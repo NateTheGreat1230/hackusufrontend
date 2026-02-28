@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CustomerDetailsBox } from "@/components/customer/CustomerDetailsBox";
 import { ProjectManager } from "@/components/ticket/ProjectManager";
 import { AssigneeSelector } from "@/components/AssigneeSelector";
+import { useBreadcrumbs } from "@/lib/breadcrumb-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,7 @@ export default function TicketPage({
   const { company, id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
+  const { setCustomTitle } = useBreadcrumbs();
 
   const [ticketData, setTicketData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
@@ -54,12 +56,18 @@ export default function TicketPage({
     const ticketRef = doc(db, "tickets", id);
     const unsubscribe = onSnapshot(ticketRef, (snap: any) => {
       if (snap.exists()) {
-        setTicketData(snap.data());
+        const data = snap.data();
+        setTicketData(data);
+        if (data.number) {
+          setCustomTitle(String(data.number));
+        } else {
+          setCustomTitle(id);
+        }
       }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [id]);
+  }, [id, setCustomTitle]);
 
   // Listen to Customer
   useEffect(() => {
