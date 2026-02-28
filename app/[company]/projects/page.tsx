@@ -7,6 +7,8 @@ import { Loader2 } from 'lucide-react';
 // 1. ADD useSearchParams HERE
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
+
+// Notice: We don't even need to worry about the Project type right here if we just use the fields we know exist!
 import { Project } from "@/types";
 
 export default function ProjectsPage() {
@@ -61,18 +63,9 @@ export default function ProjectsPage() {
     {
       header: "Status",
       key: "status",
-      render: (item: Project) => (
+      render: (item: any) => (
         <span className="capitalize px-2 py-1 bg-muted rounded-md text-xs font-medium border">
           {item.status || "draft"}
-        </span>
-      )
-    },
-    {
-      header: "Cost",
-      key: "cost",
-      render: (item: Project) => (
-        <span className="text-sm text-muted-foreground">
-          ${(item.cost || 0).toFixed(2)}
         </span>
       )
     },
@@ -80,7 +73,7 @@ export default function ProjectsPage() {
       header: "Created Date",
       key: "time_created",
       className: "text-sm text-muted-foreground",
-      render: (item: Project) => item.time_created?.toDate 
+      render: (item: any) => item.time_created?.toDate 
         ? item.time_created.toDate().toLocaleDateString() 
         : "Unknown"
     }
