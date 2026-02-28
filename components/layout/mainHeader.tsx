@@ -15,6 +15,8 @@ import { Bell, User, ChevronDown, ChevronRight } from "lucide-react"
 
 import { GlobalSearch } from "./globalSearch" 
 import { useBreadcrumbs } from "@/lib/breadcrumb-context"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export function MainHeader({ company }: { company: string }) {
   const { trail } = useBreadcrumbs()
@@ -84,9 +86,8 @@ export function MainHeader({ company }: { company: string }) {
                 Profile
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-500 cursor-pointer">Log out</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {signOut(auth)}} className="text-red-500 cursor-pointer">Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
