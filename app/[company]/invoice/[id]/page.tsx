@@ -100,6 +100,34 @@ export default function InvoicePage({
     return () => unsub();
   }, [id]);
 
+  // --- NEW: Verify Stripe Payment on Return ---
+  useEffect(() => {
+    // Grab the session_id from the URL
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+
+    if (sessionId) {
+      setIsProcessing(true);
+      
+      // Call our new verify route
+      fetch("/api/stripe/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          console.log("Payment successful! Your invoice has been updated.");
+          // Clean up the URL so it doesn't verify again if they refresh
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      })
+      .catch((err) => console.error("Error verifying payment:", err))
+      .finally(() => setIsProcessing(false));
+    }
+  }, []);
+
   // --- Payment Processor ---
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
