@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, updateDoc, doc, getDocs } from 'firebase/firestore';
 import { 
   ExternalLink,
   Loader2,
@@ -13,18 +13,17 @@ import {
   Clock
 } from 'lucide-react';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, useParams } from 'next/navigation';
 
-// 1. IMPORT DataTable and Button
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
-import { Invoice } from "@/types";
 
 // Helper to safely get an ID from a Firestore Reference
 const getRefId = (ref: any) => (ref?.id ? ref.id : "");
 
 const initialFormState = {
   id: "",
+  number: "", 
   amount: 0,
   amount_due: 0,
   companyId: "",
@@ -34,31 +33,43 @@ const initialFormState = {
 };
 
 const InvoiceManager = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const params = useParams();
+  const company = params.company as string;
   
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
+
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Modal states
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // 1. Fetch Invoices
     const q = query(collection(db, "invoices"), orderBy("time_created", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })) as Invoice[];
+      }));
       setInvoices(data);
       setLoading(false);
     }, (error) => {
       console.error("Firebase Error:", error);
       setLoading(false);
     });
+
+    // 2. Fetch Customers for the name lookup
+    const fetchCustomers = async () => {
+      const custSnap = await getDocs(collection(db, "customers"));
+      setCustomers(custSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    };
+    fetchCustomers();
 
     return () => unsubscribe();
   }, []);
@@ -68,14 +79,61 @@ const InvoiceManager = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const openAddModal = () => {
-    setFormData(initialFormState);
-    setIsFormModalOpen(true);
+  // Helper to find the customer name
+  const getCustomerName = (ref: any) => {
+    const id = getRefId(ref);
+    if (!id) return "N/A";
+    const customer = customers.find(c => c.id === id);
+    if (!customer) return "Unknown Customer";
+    return `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.company_name || id;
   };
 
-  const openEditModal = (invoice: Invoice) => {
+  // --- Auto-Increment Invoice Number ---
+  const openAddModal = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const invSnap = await getDocs(collection(db, "invoices"));
+      let nextNumber = 1;
+
+      if (!invSnap.empty) {
+        // Extract numbers and handle both pure numbers and "INV0001" formats
+        const existingNumbers = invSnap.docs.map(d => {
+          const val = d.data().number;
+          if (typeof val === 'string') {
+            const parsed = parseInt(val.replace(/\D/g, ''), 10);
+            return isNaN(parsed) ? 0 : parsed;
+          }
+          if (typeof val === 'number') return val;
+          return 0;
+        });
+
+        const maxNumber = Math.max(...existingNumbers, 0);
+        if (maxNumber > 0) {
+          nextNumber = maxNumber + 1;
+        }
+      }
+
+      // Format it beautifully like INV0001, INV0002, etc.
+      const paddedNumber = nextNumber.toString().padStart(4, '0');
+      
+      setFormData({
+        ...initialFormState,
+        number: `INV${paddedNumber}`
+      });
+      setIsFormModalOpen(true);
+    } catch (error) {
+      console.error("Error generating invoice number:", error);
+      alert("Could not generate a new invoice number.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openEditModal = (invoice: any) => {
     setFormData({
       id: invoice.id,
+      number: invoice.number || "",
       amount: invoice.amount || 0,
       amount_due: invoice.amount_due || 0,
       companyId: getRefId(invoice.company),
@@ -94,6 +152,7 @@ const InvoiceManager = () => {
       const now = new Date();
       
       const invoiceData: any = {
+        number: formData.number, 
         amount: Number(formData.amount),
         amount_due: Number(formData.amount_due),
         company: formData.companyId ? doc(db, 'companies', formData.companyId) : null,
@@ -109,7 +168,7 @@ const InvoiceManager = () => {
       } else {
         invoiceData.time_created = now;
         invoiceData.line_items = []; 
-        invoiceData.transactions = []; 
+        invoiceData.status = "open";
         await addDoc(collection(db, "invoices"), invoiceData);
       }
       
@@ -123,49 +182,46 @@ const InvoiceManager = () => {
     }
   };
 
-  const filteredInvoices = invoices.filter((inv) => {
+  const filteredInvoices = invoices.filter((inv: any) => {
     if (!searchQuery) return true;
 
-    const searchableMatch = `${inv.id || ''} ${getRefId(inv.customer) || ''}`.toLowerCase();
+    const searchableMatch = `${inv.number || ''} ${inv.id || ''} ${getRefId(inv.customer) || ''}`.toLowerCase();
     return searchableMatch.includes(searchQuery);
   });
 
-  // 2. DEFINE COLUMNS FOR DATA TABLE
   const columns = [
     {
-      header: "Invoice ID",
-      key: "id",
-      // Match the bold, standard text of the Products page
-      render: (item: Invoice) => (
+      header: "Invoice #",
+      key: "number",
+      render: (item: any) => (
         <div className="py-2">
-          <p className="font-semibold">{item.id}</p>
+          <p className="font-semibold text-slate-900">{item.number || item.id}</p>
         </div>
       )
     },
     {
-      header: "Customer Ref",
+      header: "Customer",
       key: "customerRef",
-      // Removed font-mono and text-muted-foreground so it defaults to standard black text
       className: "py-2 text-sm",
-      render: (item: Invoice) => getRefId(item.customer) || "N/A"
+      render: (item: any) => getCustomerName(item.customer)
     },
     {
       header: "Amount",
       key: "amount",
       className: "py-2 text-sm",
-      render: (item: Invoice) => `$${item.amount?.toFixed(2)}`
+      render: (item: any) => `$${item.amount?.toFixed(2)}`
     },
     {
       header: "Status",
       key: "status",
       className: "py-2",
-      render: (item: Invoice) => <PaymentBadge amountDue={item.amount_due || 0} />
+      render: (item: any) => <PaymentBadge amountDue={item.amount_due || 0} />
     },
     {
       header: "Actions",
       key: "actions",
       className: "py-2 text-right",
-      render: (item: Invoice) => (
+      render: (item: any) => (
         <div className="flex justify-end gap-2">
           <Button 
             variant="ghost" 
@@ -185,7 +241,7 @@ const InvoiceManager = () => {
             className="cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedInvoice(item);
+              router.push(`/${company}/invoice/${item.id}`);
             }}
           >
             <ExternalLink size={16} className="mr-1" />
@@ -205,9 +261,8 @@ const InvoiceManager = () => {
     );
   }
 
-  // 3. APPLY PRODUCTS PAGE LAYOUT CLASSES
   return (
-    <div className="flex h-full w-full overflow-hidden bg-muted/10">
+    <div className="flex h-full w-full overflow-hidden bg-muted/10 min-h-screen">
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
           
@@ -216,20 +271,21 @@ const InvoiceManager = () => {
             <p className="text-sm text-muted-foreground">
               Manage billing, payments, and client accounts.
             </p>
+            {/* Styled as a black button */}
             <Button 
               onClick={openAddModal}
-              className="cursor-pointer shrink-0 ml-4"
+              disabled={isSubmitting}
+              className="cursor-pointer shrink-0 ml-4 bg-black hover:bg-slate-800 text-white"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
               <span>Create Invoice</span>
             </Button>
           </div>
 
-          {/* 4. REPLACE RAW TABLE WITH DATATABLE COMPONENT */}
           <DataTable 
             columns={columns}
             data={filteredInvoices} 
-            onRowClick={(item: Invoice) => setSelectedInvoice(item)}
+            onRowClick={(item: any) => router.push(`/${company}/invoice/${item.id}`)}
             emptyMessage={searchQuery ? `No invoices found matching "${searchQuery}".` : "No invoices found."}
           />
 
@@ -241,7 +297,7 @@ const InvoiceManager = () => {
               <h3 className="font-semibold text-lg text-slate-800">
                 {formData.id ? 'Edit Invoice' : 'Create New Invoice'}
               </h3>
-              <button onClick={() => setIsFormModalOpen(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1">
+              <button type="button" onClick={() => setIsFormModalOpen(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
@@ -249,14 +305,25 @@ const InvoiceManager = () => {
             <form onSubmit={handleSubmit} className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-sm font-medium text-slate-700">Invoice Number</label>
+                  <input 
+                    type="text" 
+                    readOnly
+                    name="number" 
+                    value={formData.number} 
+                    className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-medium text-sm cursor-not-allowed" 
+                  />
+                </div>
+
                 {/* Financials */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Total Amount ($)</label>
-                  <input required type="number" step="0.01" name="amount" value={formData.amount} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" step="0.01" min="0" name="amount" value={formData.amount} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Amount Due ($)</label>
-                  <input required type="number" step="0.01" name="amount_due" value={formData.amount_due} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" step="0.01" min="0" name="amount_due" value={formData.amount_due} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
 
                 {/* References */}
@@ -284,85 +351,20 @@ const InvoiceManager = () => {
               </div>
 
               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setIsFormModalOpen(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-medium transition-colors">
+                <Button type="button" variant="outline" onClick={() => setIsFormModalOpen(false)}>
                   Cancel
-                </button>
-                <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
+                </Button>
+                {/* Styled as a black button */}
+                <Button type="submit" disabled={isSubmitting} className="bg-black hover:bg-slate-800 text-white min-w-[140px] cursor-pointer">
+                  {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
                   {formData.id ? 'Save Changes' : 'Create Invoice'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Details View Modal */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-semibold text-lg text-slate-800">Invoice Details</h3>
-              <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-slate-700 transition-colors p-1">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Invoice ID</p>
-                  <p className="font-mono text-sm text-slate-900 mt-1">{selectedInvoice.id}</p>
-                </div>
-                <PaymentBadge amountDue={selectedInvoice.amount_due || 0} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Total Amount</p>
-                  <p className="text-lg font-semibold text-slate-900">${selectedInvoice.amount?.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Amount Due</p>
-                  <p className="text-lg font-semibold text-red-600">${selectedInvoice.amount_due?.toFixed(2)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-bold text-slate-800">References</h4>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <span className="font-medium text-slate-500">Customer:</span>
-                  <span className="col-span-2 font-mono text-slate-700 text-xs break-all">{getRefId(selectedInvoice.customer) || "None"}</span>
-                  
-                  <span className="font-medium text-slate-500">Company:</span>
-                  <span className="col-span-2 font-mono text-slate-700 text-xs break-all">{getRefId(selectedInvoice.company) || "None"}</span>
-                  
-                  <span className="font-medium text-slate-500">Project:</span>
-                  <span className="col-span-2 font-mono text-slate-700 text-xs break-all">{getRefId(selectedInvoice.project) || "None"}</span>
-                  
-                  <span className="font-medium text-slate-500">Timeline:</span>
-                  <span className="col-span-2 font-mono text-slate-700 text-xs break-all">{getRefId(selectedInvoice.timeline) || "None"}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-              <button 
-                onClick={() => {
-                  setSelectedInvoice(null);
-                  openEditModal(selectedInvoice);
-                }} 
-                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-medium transition-colors text-sm flex items-center gap-1"
-              >
-                <Edit size={14} /> Edit
-              </button>
-              <button onClick={() => setSelectedInvoice(null)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-medium transition-colors text-sm">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
         </div>
       </div>
     </div>

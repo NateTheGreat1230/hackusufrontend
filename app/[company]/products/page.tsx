@@ -165,7 +165,7 @@ const InventoryManager = () => {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-muted/10">
+    <div className="flex h-full w-full overflow-hidden bg-muted/10 min-h-screen">
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
           
@@ -192,98 +192,103 @@ const InventoryManager = () => {
 
       {/* Add Product Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          {/* Constrain height to 90vh and make it a flex column */}
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Header stays pinned to the top */}
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
               <h3 className="font-semibold text-lg text-slate-800">Add New Product</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1">
+              <button type="button" onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer">
                 <X size={20} />
               </button>
             </div>
             
-            <form onSubmit={handleAddProduct} className="p-6">
+            {/* Form becomes scrollable inside the modal */}
+            <form onSubmit={handleAddProduct} className="p-6 overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Basic Info */}
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-sm font-medium text-slate-700">Product Name</label>
-                  <input required name="name" value={formData.name} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. My Product MOBO" />
+                  <input required name="name" value={formData.name} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="e.g. My Product MOBO" />
                 </div>
                 
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-sm font-medium text-slate-700">Description</label>
-                  <textarea required name="description" value={formData.description} onChange={handleInputChange} rows={2} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="A decent motherboard..." />
+                  <textarea required name="description" value={formData.description} onChange={handleInputChange} rows={2} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="A decent motherboard..." />
                 </div>
 
                 {/* Identifiers */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Model Number</label>
-                  <input required name="model_number" value={formData.model_number} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="ASUS TUF X470 WIFI" />
+                  <input required name="model_number" value={formData.model_number} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="ASUS TUF X470 WIFI" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">SKU</label>
-                  <input required name="sku" value={formData.sku} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="blahdeblah" />
+                  <input required name="sku" value={formData.sku} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="blahdeblah" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">UPC</label>
-                  <input required name="upc" value={formData.upc} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="123451234512345" />
+                  <input required name="upc" value={formData.upc} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="123451234512345" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Image URL</label>
-                  <input required name="image" value={formData.image} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://..." />
+                  <input required name="image" value={formData.image} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="https://..." />
                 </div>
 
                 {/* Categorization */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Category</label>
-                  <input required name="category" value={formData.category} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required name="category" value={formData.category} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Type</label>
-                  <input required name="type" value={formData.type} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required name="type" value={formData.type} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
 
                 {/* Pricing & Stock */}
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Cost ($)</label>
-                  <input required type="number" step="0.01" name="cost" value={formData.cost} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" step="0.01" name="cost" value={formData.cost} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Price ($)</label>
-                  <input required type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Total Quantity</label>
-                  <input required type="number" name="qty" value={formData.qty} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" name="qty" value={formData.qty} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">Quantity Available</label>
-                  <input required type="number" name="qty_avail" value={formData.qty_avail} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" name="qty_avail" value={formData.qty_avail} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                 </div>
 
                 {/* Relations */}
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-sm font-medium text-slate-700">Company ID (Reference)</label>
-                  <input required name="companyId" value={formData.companyId} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. mWRyQMkC6Abcrc7BXVeH" />
+                  <input required name="companyId" value={formData.companyId} onChange={handleInputChange} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="e.g. mWRyQMkC6Abcrc7BXVeH" />
                   <p className="text-xs text-slate-500">Paste the document ID of the company. This will be saved as a Firestore Reference.</p>
                 </div>
               </div>
 
-              <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-medium transition-colors">
+              {/* Action Buttons */}
+              <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-slate-100 shrink-0">
+                <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
                   Cancel
-                </button>
-                <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : null}
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px] cursor-pointer">
+                  {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
                   Save Product
-                </button>
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-    </div>
-    </div>
+        </div>
+      </div>
     </div>
   );
 }

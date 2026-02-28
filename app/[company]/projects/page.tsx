@@ -45,7 +45,7 @@ export default function ProjectsPage() {
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
 
-  // NEW: Ticket Selection State
+  // Ticket Selection State
   const [selectedTicketId, setSelectedTicketId] = useState("");
   const [selectedTicketNumber, setSelectedTicketNumber] = useState("");
   const [ticketSearch, setTicketSearch] = useState("");
@@ -145,7 +145,7 @@ export default function ProjectsPage() {
       // Matches your firebase screenshot structure exactly
       await addDoc(collection(db, "projects"), {
         amount: parsedAmount,
-        amount_due: parsedAmount, // Automatically matching the amount
+        amount_due: parsedAmount,
         approved: false,
         assigned_users: [],
         company: doc(db, "companies", company),
@@ -258,10 +258,11 @@ export default function ProjectsPage() {
             <p className="text-sm text-muted-foreground">
               Manage projects and quotes.
             </p>
+            {/* BLACK BUTTON HERE */}
             <Button 
               onClick={handleOpenModal} 
               disabled={isSubmitting}
-              className="cursor-pointer shrink-0 ml-4 bg-blue-600 hover:bg-blue-700 text-white"
+              className="cursor-pointer shrink-0 ml-4 bg-black hover:bg-slate-800 text-white"
             >
               {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
               Add Project
@@ -417,7 +418,8 @@ export default function ProjectsPage() {
                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting || !selectedCustomerId} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px] cursor-pointer">
+                {/* BLACK BUTTON HERE */}
+                <Button type="submit" disabled={isSubmitting || !selectedCustomerId} className="bg-black hover:bg-slate-800 text-white min-w-[120px] cursor-pointer">
                   {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 mx-auto" /> : 'Create Project'}
                 </Button>
               </div>

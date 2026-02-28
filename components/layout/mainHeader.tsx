@@ -12,7 +12,6 @@ import {
 import Link from "next/link"
 
 import { Bell, User, ChevronDown, ChevronRight } from "lucide-react"
-import { usePathname } from "next/navigation"
 
 import { GlobalSearch } from "./globalSearch" 
 import { useBreadcrumbs } from "@/lib/breadcrumb-context"
@@ -29,16 +28,22 @@ export function MainHeader({ company }: { company: string }) {
         <div className="flex items-center text-sm ml-2 overflow-hidden whitespace-nowrap">
           {trail && trail.length > 0 ? (
             trail.map((item, index) => {
-              const isLast = index === trail.length - 1
+              const isLast = index === trail.length - 1;
+              
+              // Instantly clean up any messy 20-character IDs without a loading spinner
+              const isMessyId = item.title.length === 20 && !item.title.includes(" ");
+              const displayText = isMessyId ? item.title.substring(0, 8).toUpperCase() : item.title;
+              
               return (
                 <div key={item.url} className="flex items-center">
                   {index > 0 && <ChevronRight className="w-4 h-4 mx-1 md:mx-2 text-muted-foreground flex-shrink-0" />}
+                  
                   <Link 
                     href={item.url}
                     className={`hover:underline truncate max-w-[120px] sm:max-w-[200px] ${isLast ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-                    title={item.title}
+                    title={displayText}
                   >
-                    {item.title}
+                    {displayText}
                   </Link>
                 </div>
               )

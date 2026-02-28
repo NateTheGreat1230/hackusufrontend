@@ -42,19 +42,23 @@ export default function InvoicePage({
   const [paymentMethod, setPaymentMethod] = useState<"card" | "manual">("card");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // 1. DEDICATED TITLE EFFECT: This fixes the race condition!
+  useEffect(() => {
+    if (invoice) {
+      if (invoice.number) {
+        const numStr = String(invoice.number);
+        setCustomTitle(numStr.startsWith("INV") ? numStr : `INV${numStr}`);
+      } else {
+        setCustomTitle(invoice.id.toUpperCase().slice(0, 8));
+      }
+    }
+  }, [invoice?.number, invoice?.id, setCustomTitle]);
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "invoices", id), async (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setInvoice({ id: docSnap.id, ...data });
-        
-        if (data.invoice_number) {
-          setCustomTitle(String(data.invoice_number));
-        } else if (data.number) {
-          setCustomTitle('INV' + String(data.number));
-        } else {
-          setCustomTitle(id.toUpperCase().slice(0, 8));
-        }
         
         // Pre-fill payment amount when invoice loads
         setPaymentAmount(data.amount_due?.toFixed(2) || "0.00");
@@ -108,18 +112,16 @@ export default function InvoicePage({
       setIsLoading(false);
     });
     return () => unsub();
-  }, [id, setCustomTitle]);
+  }, [id]);
 
-  // --- NEW: Verify Stripe Payment on Return ---
+  // --- Verify Stripe Payment on Return ---
   useEffect(() => {
-    // Grab the session_id from the URL
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("session_id");
 
     if (sessionId) {
       setIsProcessing(true);
       
-      // Call our new verify route
       fetch("/api/stripe/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -129,7 +131,6 @@ export default function InvoicePage({
       .then((data) => {
         if (data.success) {
           console.log("Payment successful! Your invoice has been updated.");
-          // Clean up the URL so it doesn't verify again if they refresh
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       })
@@ -144,7 +145,6 @@ export default function InvoicePage({
     
     const amount = parseFloat(paymentAmount);
     
-    // Safety checks
     if (isNaN(amount) || amount <= 0) return alert("Please enter a valid amount.");
     if (amount > invoice.amount_due) return alert("You cannot pay more than the amount due.");
 
@@ -152,23 +152,17 @@ export default function InvoicePage({
 
     try {
       if (paymentMethod === "manual") {
-        // Calculate the new math
         const newAmountDue = invoice.amount_due - amount;
-        
-        // If they paid it all off, mark it completed. Otherwise, keep current status.
         const newStatus = newAmountDue <= 0 ? "completed" : invoice.status;
 
-        // Update Firestore
         const invoiceRef = doc(db, "invoices", invoice.id);
         await updateDoc(invoiceRef, {
           amount_due: newAmountDue,
           status: newStatus
         });
 
-        // Close the modal
         setIsPaymentModalOpen(false);
       } else {
-        // 1. Call our secure backend bridge
         const res = await fetch("/api/stripe/checkout", {
           method: "POST",
           headers: {
@@ -178,14 +172,13 @@ export default function InvoicePage({
             amount: amount,
             invoiceId: invoice.id,
             companyId: company,
-            invoiceNumber: invoice.invoice_number || invoice.id,
-            currentUrl: window.location.href, // Tell Stripe where to send them back to!
+            invoiceNumber: invoice.number || invoice.id,
+            currentUrl: window.location.href, 
           }),
         });
 
         const data = await res.json();
 
-        // 2. If Stripe gives us a URL, redirect the user there
         if (data.url) {
           window.location.href = data.url;
         } else {
@@ -215,6 +208,11 @@ export default function InvoicePage({
   if (!invoice) {
     return <div className="p-6">Invoice not found.</div>;
   }
+
+  // Determine final display number for the UI
+  const displayInvoiceNum = invoice.number 
+    ? (String(invoice.number).startsWith("INV") ? invoice.number : `INV${invoice.number}`)
+    : invoice.id.toUpperCase().slice(0, 8);
 
   return (
     <div className="flex-1 flex flex-col items-center bg-gray-50/50 min-h-screen py-8 px-4 w-full print:bg-white print:p-0 print:m-0 print:block print:min-h-0">
@@ -248,7 +246,8 @@ export default function InvoicePage({
                 </CardTitle>
                 <div className="text-sm text-muted-foreground flex items-center space-x-1">
                   <FileText className="w-4 h-4 text-gray-400" />
-                  <span>#{invoice.invoice_number || invoice.id.toUpperCase().slice(0, 8)}</span>
+                  {/* Cleaned up display logic here */}
+                  <span>{displayInvoiceNum}</span>
                 </div>
               </div>
               <div className="text-right space-y-1">
