@@ -54,7 +54,7 @@ export default function TicketsPage() {
       key: "number",
       render: (item: Ticket) => (
         <span className="font-semibold text-blue-600">
-          #{item.number || '---'}
+          {item.number || '---'}
         </span>
       )
     },

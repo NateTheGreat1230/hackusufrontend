@@ -74,6 +74,9 @@ export default function ProjectsPage() {
       render: (item: any) => (
         <span className="text-sm text-red-600">
           ${(item.amount_due || 0).toFixed(2)}
+      render: (item: Project) => (
+        <span className="font-semibold text-blue-600">
+          {item.number || '---'}
         </span>
       )
     },
