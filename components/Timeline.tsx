@@ -15,6 +15,7 @@ import {
   getDoc
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, FileText, Send, Ticket, User } from "lucide-react";
@@ -23,6 +24,7 @@ interface TimelineEntry {
   id: string;
   company: DocumentReference;
   generated_by: DocumentReference;
+  user?: DocumentReference;
   note?: string;
   time_created: Timestamp;
   time_updated: Timestamp;
@@ -43,6 +45,7 @@ interface TimelineItemProps {
 
 function TimelineItem({ entry }: TimelineItemProps) {
   const [generatorLabel, setGeneratorLabel] = useState<string>("System");
+  const [userLabel, setUserLabel] = useState<string | null>(null);
   const [loadingContext, setLoadingContext] = useState(true);
 
   useEffect(() => {
@@ -68,9 +71,23 @@ function TimelineItem({ entry }: TimelineItemProps) {
           } else if (docPath.includes("projects/")) {
             setGeneratorLabel(`${data.number || '??'}`);
           } else if (docPath.includes("users/")) {
-            setGeneratorLabel(`User ${data.name || data.email || '??'}`);
+            const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ");
+            setGeneratorLabel(`User ${fullName || data.email || '??'}`);
           } else {
             setGeneratorLabel(`Company Data`);
+          }
+        }
+
+        // Fetch user reference if it exists separately
+        if (entry.user) {
+          const userRef = typeof entry.user === 'string' 
+            ? doc(db, entry.user) 
+            : entry.user;
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(" ");
+            setUserLabel(fullName || userData.email || 'Unknown User');
           }
         }
       } catch (err) {
@@ -81,7 +98,7 @@ function TimelineItem({ entry }: TimelineItemProps) {
     }
     
     fetchContext();
-  }, [entry.generated_by]);
+  }, [entry.generated_by, entry.user]);
 
   const generatedByPath = entry.generated_by?.path || (typeof entry.generated_by === 'string' ? entry.generated_by : "");
   let GeneratorIcon = User;
@@ -114,10 +131,20 @@ function TimelineItem({ entry }: TimelineItemProps) {
               <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
               <span className="leading-relaxed whitespace-pre-wrap">{entry.note}</span>
             </div>
+            {userLabel && (
+              <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+                <User className="w-3 h-3" /> {userLabel}
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-sm text-muted-foreground">
             {entry.note || <span className="capitalize">{entry.type.replace('_', ' ')} Event</span>}
+            {userLabel && (
+              <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
+                <User className="w-3 h-3" /> {userLabel}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -126,6 +153,7 @@ function TimelineItem({ entry }: TimelineItemProps) {
 }
 
 export default function Timeline({ timelineId, companyId, generatedById, generatedByType }: TimelineProps) {
+  const { user } = useAuth();
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(true);
@@ -180,10 +208,10 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
 
     try {
       const companyRef = doc(db, "companies", companyId);
-      const generatedByRef = doc(db, generatedByType, generatedById); 
+      const generatedByRef = doc(db, generatedByType, generatedById);
       const timelineRef = doc(db, "timelines", timelineId);
 
-      await addDoc(collection(db, "timeline_entries"), {
+      const entryData: any = {
         company: companyRef,
         generated_by: generatedByRef,
         note: newNote,
@@ -191,7 +219,13 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
         time_updated: serverTimestamp(),
         timeline: timelineRef,
         type: "note"
-      });
+      };
+
+      if (user) {
+        entryData.user = doc(db, "users", user.uid);
+      }
+
+      await addDoc(collection(db, "timeline_entries"), entryData);
       
       setNewNote("");
     } catch (err) {

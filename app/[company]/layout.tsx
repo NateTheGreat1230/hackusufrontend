@@ -10,12 +10,16 @@ export default async function InternalLayout({ children, params }: {children: Re
     <div>
       <AuthProvider>
         <AuthRequiredWrapper>
-          <div className="flex h-screen w-screen">
-            <MainSidebar company={company} />
-            <div className="flex flex-col flex-1">
-              <MainHeader company={company} />
+          <div className="flex h-screen w-screen print:h-auto print:w-auto print:block">
+            <div className="print:hidden">
+              <MainSidebar company={company} />
+            </div>
+            <div className="flex flex-col flex-1 print:block">
+              <div className="print:hidden">
+                <MainHeader company={company} />
+              </div>
 
-              <main className="flex-1 overflow-auto">
+              <main className="flex-1 overflow-auto print:overflow-visible print:h-auto">
                 {children}
               </main>
             </div>

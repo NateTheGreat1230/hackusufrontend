@@ -8,9 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, CircleDashed, X, MoreHorizontal, Copy, Trash, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { CustomerDetailsBox } from "@/components/customer/CustomerDetailsBox";
 import { LineItemsManager } from "@/components/project/LineItemsManager";
+import { InvoiceManager } from "@/components/project/InvoiceManager";
+import { AssigneeSelector } from "@/components/AssigneeSelector";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +28,7 @@ export default function ProjectPage({
 }) {
   const { company, id } = use(params);
   const router = useRouter();
+  const { user } = useAuth();
 
   const [projectData, setProjectData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
@@ -90,7 +94,8 @@ export default function ProjectPage({
   const logEvent = async (note: string, type: string = "system_event") => {
     if (!projectData?.timeline) return;
     const timelineRef = typeof projectData.timeline === 'string' ? doc(db, projectData.timeline) : projectData.timeline;
-    await addDoc(collection(db, "timeline_entries"), {
+    
+    const entryData: any = {
       company: doc(db, "companies", company),
       generated_by: projectRef,
       note,
@@ -98,7 +103,12 @@ export default function ProjectPage({
       timeline: timelineRef,
       time_created: serverTimestamp(),
       time_updated: serverTimestamp(),
-    });
+    };
+    if (user) {
+      entryData.user = doc(db, "users", user.uid);
+    }
+    
+    await addDoc(collection(db, "timeline_entries"), entryData);
   };
 
   // Status Handlers
@@ -155,7 +165,7 @@ export default function ProjectPage({
     const qProjectsCount = query(collection(db, "projects"));
     const snapshot = await getCountFromServer(qProjectsCount);
     const count = snapshot.data().count;
-    const newProjectNumber = `PROJ${1000 + count + 1}`;
+    const newProjectNumber = 1000 + count + 1;
 
     const newTimelineRef = await addDoc(collection(db, "timelines"), {
       company: doc(db, "companies", company),
@@ -172,7 +182,7 @@ export default function ProjectPage({
       time_updated: serverTimestamp(),
     });
 
-    await addDoc(collection(db, "timeline_entries"), {
+    const entryData: any = {
       company: doc(db, "companies", company),
       generated_by: newProjectRef,
       note: `Project was duplicated from ${projectData.number || id}.`,
@@ -180,7 +190,11 @@ export default function ProjectPage({
       time_updated: serverTimestamp(),
       timeline: newTimelineRef,
       type: "project_creation",
-    });
+    };
+    if (user) {
+      entryData.user = doc(db, "users", user.uid);
+    }
+    await addDoc(collection(db, "timeline_entries"), entryData);
 
     router.push(`/${company}/project/${newProjectRef.id}`);
   };
@@ -202,9 +216,15 @@ export default function ProjectPage({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
-                Project {projectData.number ? `#${projectData.number}` : ""}
+                {projectData.number ? projectData.number : projectData.id}
               </h1>
-              <p className="text-muted-foreground mt-1">Project & Quote details</p>
+              <p className="text-muted-foreground mt-1 mb-3">Project & Quote details</p>
+              <AssigneeSelector 
+                company={company} 
+                docRef={projectRef} 
+                currentAssignees={projectData.assigned_users || []} 
+                logEvent={logEvent} 
+              />
             </div>
             
             <div className="flex items-center gap-2">
@@ -279,12 +299,6 @@ export default function ProjectPage({
               <CardContent className="mt-2">
                 <div className="space-y-4">
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Status</div>
-                    <Badge variant={['open', 'completed'].includes(baseStatus) ? "default" : "secondary"} className="capitalize">
-                      {baseStatus}
-                    </Badge>
-                  </div>
-                  <div>
                     <div className="text-sm text-muted-foreground">Original Ticket</div>
                     <div className="text-sm font-medium">
                        {projectData.ticket ? (
@@ -307,6 +321,9 @@ export default function ProjectPage({
               </CardContent>
             </Card>
           </div>
+
+          {/* Invoice Manager */}
+          <InvoiceManager companyId={company} projectId={id} projectData={projectData} logEvent={logEvent} />
 
           {/* Line Items Manager */}
           <LineItemsManager companyId={company} projectId={id} projectData={projectData} logEvent={logEvent} />
