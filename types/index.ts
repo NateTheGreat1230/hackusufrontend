@@ -103,6 +103,9 @@ export interface Project {
   time_updated?: Timestamp | any;
   timeline?: DocumentReference | any;
   cost?: number; 
+  token?: string;
+  approved?: boolean;
+  rejected?: boolean;
 }
 
 export interface Ticket {
