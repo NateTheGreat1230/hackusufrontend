@@ -121,7 +121,13 @@ export default function TicketsPage() {
     setIsSubmitting(true);
 
     try {
-      await addDoc(collection(db, "tickets"), {
+      const newTimelineRef = await addDoc(collection(db, "timelines"), {
+        company: doc(db, "companies", company),
+        time_created: new Date(),
+        time_updated: new Date(),
+      });
+
+      const newTicketRef = await addDoc(collection(db, "tickets"), {
         number: ticketNumber,
         request: request,
         status: "open",
@@ -129,6 +135,17 @@ export default function TicketsPage() {
         company: doc(db, "companies", company), // Firebase Reference
         assigned_users: [],
         projects: [],
+        timeline: newTimelineRef,
+        time_created: new Date(),
+        time_updated: new Date(),
+      });
+
+      await addDoc(collection(db, "timeline_entries"), {
+        company: doc(db, "companies", company),
+        generated_by: newTicketRef,
+        note: `Ticket opened.`,
+        type: "ticket_creation",
+        timeline: newTimelineRef,
         time_created: new Date(),
         time_updated: new Date(),
       });

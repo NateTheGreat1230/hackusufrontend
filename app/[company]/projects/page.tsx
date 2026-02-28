@@ -148,8 +148,14 @@ export default function ProjectsPage() {
     const parsedDeposit = parseFloat(depositRequired) || 0;
 
     try {
+      const newTimelineRef = await addDoc(collection(db, "timelines"), {
+        company: doc(db, "companies", company),
+        time_created: new Date(),
+        time_updated: new Date(),
+      });
+
       // Matches your firebase screenshot structure exactly
-      await addDoc(collection(db, "projects"), {
+      const newProjectRef = await addDoc(collection(db, "projects"), {
         amount: parsedAmount,
         amount_due: parsedAmount,
         approved: false,
@@ -163,10 +169,21 @@ export default function ProjectsPage() {
         number: Number(projectNumber),
         rejected: false,
         status: "open",
+        timeline: newTimelineRef,
         ticket: selectedTicketId ? doc(db, "tickets", selectedTicketId) : null,
         time_created: new Date(),
         time_updated: new Date(),
         token: generateToken(),
+      });
+
+      await addDoc(collection(db, "timeline_entries"), {
+        company: doc(db, "companies", company),
+        generated_by: newProjectRef,
+        note: `Project created.`,
+        type: "project_creation",
+        timeline: newTimelineRef,
+        time_created: new Date(),
+        time_updated: new Date(),
       });
 
       setIsModalOpen(false);

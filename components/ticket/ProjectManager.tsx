@@ -43,6 +43,13 @@ export function ProjectManager({ companyId, ticketId, ticketData, logEvent }: Pr
     const newProjectNumber = 1000 + count + 1;
 
     const ticketRef = doc(db, "tickets", ticketId);
+    
+    const newTimelineRef = await addDoc(collection(db, "timelines"), {
+      company: doc(db, "companies", companyId),
+      time_created: serverTimestamp(),
+      time_updated: serverTimestamp(),
+    });
+
     const newProjectRef = await addDoc(collection(db, "projects"), {
       amount: 0,
       amount_due: 0,
@@ -56,7 +63,17 @@ export function ProjectManager({ companyId, ticketId, ticketData, logEvent }: Pr
       ticket: ticketRef,
       time_created: serverTimestamp(),
       time_updated: serverTimestamp(),
-      timeline: ticketData.timeline || null,
+      timeline: newTimelineRef,
+    });
+
+    await addDoc(collection(db, "timeline_entries"), {
+      company: doc(db, "companies", companyId),
+      generated_by: newProjectRef,
+      note: `Project created from ticket.`,
+      type: "project_creation",
+      timeline: newTimelineRef,
+      time_created: serverTimestamp(),
+      time_updated: serverTimestamp(),
     });
 
     if (logEvent) {

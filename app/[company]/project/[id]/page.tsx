@@ -488,14 +488,14 @@ export default function ProjectPage({
             </Card>
           </div>
 
+          {/* Line Items Manager */}
+          <LineItemsManager companyId={company} projectId={id} projectData={projectData} logEvent={logEvent} />
+
           {/* Invoice Manager */}
           <InvoiceManager companyId={company} projectId={id} projectData={projectData} logEvent={logEvent} />
 
           {/* Manufacturing Manager */}
           <ManufacturingManager companyId={company} projectId={id} />
-
-          {/* Line Items Manager */}
-          <LineItemsManager companyId={company} projectId={id} projectData={projectData} logEvent={logEvent} />
 
         </div>
       </div>
