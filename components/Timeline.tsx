@@ -108,18 +108,24 @@ function TimelineItem({ entry }: TimelineItemProps) {
         </div>
         
         {/* Event Body */}
-        <div className="bg-muted/30 p-3.5 rounded-lg border text-sm">
-          {entry.type === "note" && entry.note ? (
-            <div className="flex gap-2.5 items-start text-foreground">
-              <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-              <span className="leading-relaxed whitespace-pre-wrap">{entry.note}</span>
-            </div>
-          ) : (
-            <span className="capitalize text-muted-foreground">
-              {entry.type} Event
-            </span>
-          )}
-        </div>
+        {entry.type === "project_creation" ? (
+          <div className="text-sm text-muted-foreground">
+            {entry.note || "A new project was generated."}
+          </div>
+        ) : (
+          <div className="bg-muted/30 p-3.5 rounded-lg border text-sm">
+            {entry.type === "note" && entry.note ? (
+              <div className="flex gap-2.5 items-start text-foreground">
+                <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                <span className="leading-relaxed whitespace-pre-wrap">{entry.note}</span>
+              </div>
+            ) : (
+              <span className="capitalize text-muted-foreground">
+                {entry.type} Event
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -196,7 +202,7 @@ export default function Timeline({ timelineId, companyId, generatedById, generat
   }
 
   return (
-    <div className="flex flex-col h-full w-full border-l bg-card text-card-foreground overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-card text-card-foreground overflow-hidden">
       <div className="p-4 border-b bg-muted/30">
         <h3 className="font-semibold text-lg">Timeline</h3>
       </div>

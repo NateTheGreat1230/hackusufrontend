@@ -10,10 +10,10 @@ export default async function InternalLayout({ children, params }: {children: Re
       <div className="flex h-screen w-screen">
         <MainSidebar company={company} />
 
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 h-screen overflow-hidden">
           <MainHeader company={company} />
 
-          <main className="flex-1 p-6 overflow-auto">
+          <main className="flex-1 flex flex-col overflow-hidden">
             {children}
           </main>
         </div>

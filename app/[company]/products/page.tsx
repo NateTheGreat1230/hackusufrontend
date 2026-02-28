@@ -5,13 +5,17 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, addDoc, doc } from 'firebase/firestore';
 import { 
   Package, 
-  Search, 
   AlertTriangle, 
   ExternalLink,
   Loader2,
   X,
   Plus
 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+
+import { useRouter, useParams } from 'next/navigation';
+
+import { DataTable } from "@/components/DataTable";
 
 // 1. Updated Interface to match your new schema
 interface Product {
@@ -40,12 +44,14 @@ const initialFormState = {
 };
 
 const InventoryManager = () => {
+  const router = useRouter();
+  const params = useParams();
+  const company = params.company as string;
+  
   const [inventory, setInventory] = useState<Product[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   
   // Modal states
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,11 +122,54 @@ const InventoryManager = () => {
     }
   };
 
-  const filteredInventory = inventory.filter(item => 
-    item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.model_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.sku?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const columns = [
+    {
+      header: "Product Info",
+      key: "info",
+      render: (item: Product) => (
+        <div className="py-2">
+          <p className="font-semibold">{item.name}</p>
+          <p className="text-xs text-muted-foreground font-mono mt-0.5">Model: {item.model_number}</p>
+        </div>
+      )
+    },
+    {
+      header: "Category",
+      key: "category",
+      className: "py-2 text-sm"
+    },
+    {
+      header: "Pricing",
+      key: "price",
+      className: "py-2 text-sm",
+      render: (item: Product) => `$${item.price?.toFixed(2)}`
+    },
+    {
+      header: "Available Stock",
+      key: "qty_avail",
+      className: "py-2",
+      render: (item: Product) => <StockBadge qty={item.qty_avail} />
+    },
+    {
+      header: "Actions",
+      key: "actions",
+      className: "py-2 text-right",
+      render: (item: Product) => (
+        <Button 
+          variant="ghost" 
+          size="sm"
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/${company}/product/${item.id}`);
+          }}
+        >
+          <ExternalLink size={16} className="mr-1" />
+          Details
+        </Button>
+      )
+    }
+  ];
 
   if (loading) {
     return (
@@ -132,86 +181,36 @@ const InventoryManager = () => {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto text-slate-800">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Package className="text-blue-600" />
-            My Products
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">Manage and track your inventory in real-time.</p>
-        </div>
-        
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white rounded-lg font-medium shadow-sm flex items-center gap-2"
-        >
-          <Plus size={18} />
-          <span>Add Product</span>
-        </button>
-      </div>
+    <div className="flex h-full w-full overflow-hidden bg-muted/10">
+      <div className="flex-1 p-6 overflow-y-auto w-full">
+        <div className="max-w-[98%] mx-auto space-y-4">
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2 tracking-tight">
+                <Package className="text-blue-600" />
+                Products
+              </h1>
+              <p className="text-muted-foreground mt-1 text-sm">Manage and track your inventory in real-time.</p>
+            </div>
+            
+            <Button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="cursor-pointer"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              <span>Add Product</span>
+            </Button>
+          </div>
 
-      {/* Search Bar */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <input 
-          type="text" 
-          placeholder="Search by name, model, or SKU..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-        />
-      </div>
-
-      {/* Table Section */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Product Info</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Category</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Pricing</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm">Available Stock</th>
-                <th className="p-4 font-semibold text-slate-600 text-sm text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredInventory.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
-                    No products found matching your search.
-                  </td>
-                </tr>
-              ) : (
-                filteredInventory.map(item => (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4">
-                      <p className="font-semibold text-slate-900">{item.name}</p>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">Model: {item.model_number}</p>
-                    </td>
-                    <td className="p-4 text-sm text-slate-600">{item.category}</td>
-                    <td className="p-4 text-sm text-slate-600">${item.price?.toFixed(2)}</td>
-                    <td className="p-4">
-                      <StockBadge qty={item.qty_avail} />
-                    </td>
-                    <td className="p-4 text-right">
-                      <button 
-                        onClick={() => setSelectedProduct(item)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex items-center gap-1 text-sm font-medium"
-                      >
-                        <ExternalLink size={16} />
-                        Details
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <DataTable 
+            columns={columns}
+            data={inventory}
+            searchPlaceholder="Search by name, model, or SKU..."
+            searchKey={(item: Product) => `${item.name} ${item.model_number} ${item.sku}`}
+            onRowClick={(item: Product) => router.push(`/${company}/product/${item.id}`)}
+            emptyMessage="No products found matching your search."
+          />
 
       {/* 3. NEW Add Product Modal */}
       {isAddModalOpen && (
@@ -305,55 +304,8 @@ const InventoryManager = () => {
         </div>
       )}
 
-      {/* Details Modal (Unchanged structurally, just updated fields to match schema) */}
-      {selectedProduct && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-semibold text-lg text-slate-800">Product Details</h3>
-              <button onClick={() => setSelectedProduct(null)} className="text-slate-400 hover:text-slate-700 transition-colors p-1">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3">
-                <span className="text-sm font-medium text-slate-500">Name</span>
-                <span className="col-span-2 text-sm font-semibold text-slate-900">{selectedProduct.name}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3">
-                <span className="text-sm font-medium text-slate-500">Model</span>
-                <span className="col-span-2 text-sm text-slate-700">{selectedProduct.model_number}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3">
-                <span className="text-sm font-medium text-slate-500">SKU</span>
-                <span className="col-span-2 text-sm font-mono text-slate-700">{selectedProduct.sku}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3">
-                <span className="text-sm font-medium text-slate-500">Financials</span>
-                <span className="col-span-2 text-sm text-slate-700">Cost: ${selectedProduct.cost} | Price: ${selectedProduct.price}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 border-b border-slate-100 pb-3 items-center">
-                <span className="text-sm font-medium text-slate-500">Avail. Stock</span>
-                <div className="col-span-2">
-                   <StockBadge qty={selectedProduct.qty_avail} />
-                   <span className="ml-2 text-xs text-slate-500">({selectedProduct.qty_avail} of {selectedProduct.qty} total)</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <span className="text-sm font-medium text-slate-500">Database ID</span>
-                <span className="col-span-2 text-xs font-mono text-slate-400 break-all">{selectedProduct.id}</span>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-              <button onClick={() => setSelectedProduct(null)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-medium transition-colors text-sm">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    </div>
+    </div>
     </div>
   );
 }
