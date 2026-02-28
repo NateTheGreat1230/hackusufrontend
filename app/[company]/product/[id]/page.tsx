@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useBreadcrumbs } from "@/lib/breadcrumb-context";
 
 export default function ProductPage({
   params,
@@ -17,6 +18,7 @@ export default function ProductPage({
 }) {
   const { company, id } = use(params);
   const router = useRouter();
+  const { setCustomTitle } = useBreadcrumbs();
 
   const [productData, setProductData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +30,13 @@ export default function ProductPage({
     if (!id) return;
     const unsub = onSnapshot(doc(db, "products", id), (docSnap) => {
       if (docSnap.exists()) {
-        const data = { id: docSnap.id, ...docSnap.data() };
+        const data = { id: docSnap.id, ...(docSnap.data() as any) };
         setProductData(data);
+        if (data.name) {
+          setCustomTitle(data.name);
+        } else {
+          setCustomTitle("Unnamed Product");
+        }
       } else {
         setProductData(null);
       }
@@ -37,7 +44,7 @@ export default function ProductPage({
     });
 
     return () => unsub();
-  }, [id]);
+  }, [id, setCustomTitle]);
 
   const handleEditClick = () => {
     setEditForm({
