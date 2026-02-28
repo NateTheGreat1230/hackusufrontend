@@ -153,3 +153,15 @@ export interface Transaction {
   time_created?: Timestamp | any;
   type?: string;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  company?: DocumentReference;
+  user_role?: "admin" | "manager" | "user";
+  time_created?: Timestamp | any;
+  time_updated?: Timestamp | any;
+}
