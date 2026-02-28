@@ -44,7 +44,7 @@ export default function ProjectsPage() {
   const filteredData = data.filter((item) => {
     if (!searchQuery) return true;
 
-    const searchString = `${item.number || ''} ${item.name || ''} ${item.status || ''}`.toLowerCase();
+    const searchString = `${item.number || ''} ${item.status || ''}`.toLowerCase();
     
     return searchString.includes(searchQuery);
   });

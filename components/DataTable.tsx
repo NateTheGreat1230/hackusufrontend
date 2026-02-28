@@ -14,28 +14,32 @@ interface DataTableProps<T> {
   data: T[];
   onRowClick?: (item: T) => void;
   emptyMessage?: React.ReactNode;
+  hideHeader?: boolean;
 }
 
 export function DataTable<T>({
   columns,
   data,
   onRowClick,
-  emptyMessage = "No items found."
+  emptyMessage = "No items found.",
+  hideHeader = false
 }: DataTableProps<T>) {
   
   return (
     <Card>
       <CardContent className="p-0">
         <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map((col) => (
-                <TableHead key={col.key} className={col.className}>
-                  {col.header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
+          {!hideHeader && (
+            <TableHeader>
+              <TableRow>
+                {columns.map((col) => (
+                  <TableHead key={col.key} className={col.className}>
+                    {col.header}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+          )}
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
