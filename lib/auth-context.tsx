@@ -8,14 +8,14 @@ import {
   useCallback,
 } from "react"
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, DocumentReference, getDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 
 interface AppUser extends FirebaseUser {
   first_name?: string
   last_name?: string
-  role?: string
-  company?: string
+  user_role?: string
+  company?: DocumentReference
   phone?: string
 }
 

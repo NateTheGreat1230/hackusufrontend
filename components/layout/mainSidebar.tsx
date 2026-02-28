@@ -22,9 +22,11 @@ import {
   File,
   Settings,
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export function MainSidebar({ company }: { company: string }) {
   const { state } = useSidebar() // collapsed or expanded
+  const { user } = useAuth()
 
   const navItems = [
     { title: "Dashboard", url: `/${company}/dashboard`, icon: Home },
@@ -64,14 +66,16 @@ export function MainSidebar({ company }: { company: string }) {
 
       <SidebarFooter>
         <SidebarMenu>
+          {user && user.user_role === "admin" && (
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings" className={state === "collapsed" ? "justify-center" : ""}>
-              <Link href="/settings">
+              <Link href={`/${company}/settings`}>
                 <Settings />
                 {state === "expanded" && <span>Settings</span>}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
