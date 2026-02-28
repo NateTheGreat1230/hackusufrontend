@@ -21,6 +21,7 @@ import {
   Package,
   File,
   Settings,
+  ClipboardList,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
@@ -34,6 +35,7 @@ export function MainSidebar({ company }: { company: string }) {
     { title: "Tickets", url: `/${company}/tickets`, icon: NotebookText },
     { title: "Projects", url: `/${company}/projects`, icon: Folder },
     { title: "Products", url: `/${company}/products`, icon: Package },
+    { title: "Manufacturing", url: `/${company}/manufacturing`, icon: ClipboardList },
     { title: "Invoices", url: `/${company}/invoices`, icon: File },
   ]
 

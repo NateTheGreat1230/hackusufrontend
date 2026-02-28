@@ -16,6 +16,7 @@ import { CustomerDetailsBox } from "@/components/customer/CustomerDetailsBox";
 import { ProjectManager } from "@/components/ticket/ProjectManager";
 import { AssigneeSelector } from "@/components/AssigneeSelector";
 import { useBreadcrumbs } from "@/lib/breadcrumb-context";
+import { useDialog } from "@/lib/dialog-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,7 @@ export default function TicketPage({
   const router = useRouter();
   const { user } = useAuth();
   const { setCustomTitle } = useBreadcrumbs();
+  const { confirm } = useDialog();
 
   const [ticketData, setTicketData] = useState<any>(null);
   const [customerData, setCustomerData] = useState<any>(null);
@@ -241,7 +243,7 @@ export default function TicketPage({
   };
 
   const handleDeleteTicket = async () => {
-    if (confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
+    if (await confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
       await deleteDoc(ticketRef);
       router.push(`/${company}/tickets`);
     }
