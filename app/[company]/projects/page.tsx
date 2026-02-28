@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
-// 1. ADD useSearchParams HERE
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DataTable } from "@/components/DataTable";
 
@@ -16,7 +15,6 @@ export default function ProjectsPage() {
   const params = useParams();
   const company = params.company as string;
   
-  // 2. INITIALIZE the search params hook
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q")?.toLowerCase() || "";
 
@@ -40,10 +38,10 @@ export default function ProjectsPage() {
     return () => unsubscribe();
   }, [company]);
 
-  // 3. FILTER USING searchQuery
   const filteredData = data.filter((item) => {
     if (!searchQuery) return true;
 
+    // We only search by number and status now since name doesn't exist
     const searchString = `${item.number || ''} ${item.status || ''}`.toLowerCase();
     
     return searchString.includes(searchQuery);
@@ -76,9 +74,6 @@ export default function ProjectsPage() {
       render: (item: any) => (
         <span className="text-sm text-red-600">
           ${(item.amount_due || 0).toFixed(2)}
-      render: (item: Project) => (
-        <span className="font-semibold text-blue-600">
-          {item.number || '---'}
         </span>
       )
     },
@@ -115,19 +110,16 @@ export default function ProjectsPage() {
       <div className="flex-1 p-6 overflow-y-auto w-full">
         <div className="max-w-[98%] mx-auto space-y-4">
           
-          {/* 4. Action Bar with Description */}
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground">
               Manage projects and quotes.
             </p>
-            {/* If you ever add a "Create Project" button, put it right here! */}
           </div>
 
           <DataTable 
             columns={columns}
             data={filteredData}
             onRowClick={(item: Project) => router.push(`/${company}/project/${item.id}`)}
-            emptyMessage={searchQuery ? `No projects found matching "${searchQuery}".` : "No projects found."}
             emptyMessage={searchQuery ? `No projects found matching "${searchQuery}".` : "No projects found."}
           />
         </div>
